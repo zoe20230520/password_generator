@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码管理系统</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1><i class="fas fa-key"></i> 密码管理系统</h1>
+                        <p class="header-subtitle">安全、便捷的密码管理工具</p>
+                    </div>
+                    <div class="user-info">
+                        <span class="text-white me-3">
+                            <i class="fas fa-user me-2"></i>
+                            <span id="currentUsername">加载中...</span>
+                        </span>
+                        <button class="btn btn-outline-light btn-sm" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt me-1"></i> 退出
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container main-content">
+            <div class="row">
+                <!-- 左侧：密码生成器 -->
+                <div class="col-lg-4 col-md-5">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-magic"></i> 密码生成器</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">密码长度: <span id="lengthValue">12</span> 位</label>
+                                <input type="range" class="form-range" id="passwordLength" min="6" max="32" value="12">
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="useLetters" checked>
+                                    <label class="form-check-label" for="useLetters">
+                                        字母 (A-Z, a-z)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="useNumbers" checked>
+                                    <label class="form-check-label" for="useNumbers">
+                                        数字 (0-9)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="useSymbols" checked>
+                                    <label class="form-check-label" for="useSymbols">
+                                        符号 (!@#$%^&*...)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">生成的密码</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="generatedPassword" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyPassword()">
+                                        <i class="fas fa-copy"></i> 复制
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">密码强度</label>
+                                <div id="strengthIndicator">
+                                    <div class="progress">
+                                        <div class="progress-bar" id="strengthBar" role="progressbar"></div>
+                                    </div>
+                                    <small class="text-dark fw-bold" id="strengthText">点击生成按钮</small>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary w-100" onclick="generatePassword()">
+                                <i class="fas fa-sync-alt"></i> 生成密码
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：密码列表 -->
+                <div class="col-lg-8 col-md-7">
+                    <!-- 搜索和筛选 -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="searchInput" placeholder="搜索网站、用户名、备注...">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select" id="categoryFilter">
+                                        <option value="">所有分类</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#entryModal" onclick="openCreateModal()">
+                                    <i class="fas fa-plus"></i> 添加
+                                </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 密码列表 -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="fas fa-list"></i> 密码列表</h5>
+                            <span class="badge bg-secondary" id="totalCount">0 条记录</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0" id="passwordTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>网站</th>
+                                            <th>用户名</th>
+                                            <th>分类</th>
+                                            <th>强度</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="passwordList">
+                                        <!-- 动态加载 -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- 分页 -->
+                            <nav class="mt-3" id="pagination">
+                                <ul class="pagination justify-content-center">
+                                    <!-- 动态加载 -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑/添加模态框 -->
+    <div class="modal fade" id="entryModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">添加密码</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="entryForm">
+                        <input type="hidden" id="entryId">
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">网站/应用名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="siteName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">网站URL</label>
+                                <input type="url" class="form-control" id="siteUrl" placeholder="https://">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">密码 <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility()">
+                                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="useGeneratedPassword()">
+                                        <i class="fas fa-magic"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">分类</label>
+                                <input type="text" class="form-control" id="category" list="categoryList" placeholder="输入或选择分类">
+                                <datalist id="categoryList">
+                                    <!-- 动态加载 -->
+                                </datalist>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">图片备忘</label>
+                                <input type="file" class="form-control" id="imageUpload" accept="image/png,image/jpeg,image/gif,image/webp">
+                            </div>
+                            <div class="col-12" id="imagePreviewContainer" style="display: none;">
+                                <label class="form-label">当前图片</label>
+                                <div class="position-relative d-inline-block">
+                                    <img id="imagePreview" src="" alt="预览" class="img-thumbnail" style="max-width: 200px;">
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" onclick="removeImage()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">备注</label>
+                                <textarea class="form-control" id="notes" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEntry()">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查看详情模态框 -->
+    <div class="modal fade" id="viewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">密码详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body" id="viewContent">
+                    <!-- 动态加载 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="editFromViewBtn">
+                        <i class="fas fa-edit"></i> 编辑
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    确定要删除这条密码记录吗？此操作无法撤销。
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="fas fa-info-circle me-2" id="toastIcon"></i>
+                <strong class="me-auto" id="toastTitle">提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 认证辅助 -->
+    <script src="auth-helper.js"></script>
+    <!-- 自定义脚本 -->
+    <script src="script.js"></script>
+</body>
+</html>

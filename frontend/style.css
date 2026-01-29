@@ -1,0 +1,616 @@
+/* 全局样式 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+}
+
+/* 头部 */
+.header {
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    backdrop-filter: blur(10px);
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.header h1 {
+    color: white;
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.header p {
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0.5rem 0 0 0;
+    font-weight: 500;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.header-subtitle {
+    color: white !important;
+    margin: 0.5rem 0 0 0;
+    font-weight: 500;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+}
+
+.user-info span {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.btn-outline-light {
+    border-color: rgba(255, 255, 255, 0.6);
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: white;
+    color: white;
+}
+
+
+/* 主内容区 */
+.main-content {
+    padding-bottom: 2rem;
+}
+
+/* 卡片样式 */
+.card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    background: white;
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
+    border-bottom: 1px solid #e8eaed;
+    padding: 1.25rem 1.5rem;
+}
+
+.card-header h5 {
+    margin: 0;
+    color: #1a1a1a;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+}
+
+.card-body {
+    padding: 1.75rem;
+}
+
+/* 密码强度指示器 */
+#strengthIndicator .progress {
+    height: 6px;
+    border-radius: 3px;
+    background: #e8eaed;
+    margin-bottom: 0.5rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+#strengthBar {
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+#strengthText {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: #2c3e50 !important;
+    display: block;
+    margin-top: 0.25rem;
+}
+
+.strength-extreme-weak { background-color: #ff6b6b; width: 20%; }
+.strength-weak { background-color: #ffa502; width: 40%; }
+.strength-medium { background-color: #ffd93d; width: 60%; }
+.strength-strong { background-color: #6bcb77; width: 80%; }
+.strength-extreme-strong { background-color: #4d96ff; width: 100%; }
+
+/* 密码列表表格 */
+.table {
+    margin: 0;
+}
+
+.table thead th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f2f5;
+}
+
+.table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 密码强度标签 */
+.badge-strength {
+    padding: 0.4em 0.7em;
+    font-size: 0.75em;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+.badge-extreme-weak {
+    background-color: rgba(255, 107, 107, 0.15) !important;
+    color: #c0392b !important;
+    border: 1.5px solid #c0392b !important;
+}
+.badge-weak {
+    background-color: rgba(255, 165, 2, 0.15) !important;
+    color: #d35400 !important;
+    border: 1.5px solid #d35400 !important;
+}
+.badge-medium {
+    background-color: rgba(255, 217, 61, 0.15) !important;
+    color: #e67e22 !important;
+    border: 1.5px solid #e67e22 !important;
+}
+.badge-strong {
+    background-color: rgba(107, 203, 119, 0.15) !important;
+    color: #1e8449 !important;
+    border: 1.5px solid #1e8449 !important;
+}
+.badge-extreme-strong {
+    background-color: rgba(77, 150, 255, 0.15) !important;
+    color: #1a5276 !important;
+    border: 1.5px solid #1a5276 !important;
+}
+
+/* 操作按钮 */
+.btn-action {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8125rem;
+    margin: 0 0.2rem;
+    border-radius: 8px;
+    border: 1.5px solid;
+    transition: all 0.2s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 模态框 */
+.modal-content {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e8eaed;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #e8eaed;
+    padding: 1.25rem 2rem;
+    background: #fafbfc;
+}
+
+/* 表单样式 */
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.form-control,
+.form-select {
+    border: 1.5px solid #e8eaed;
+    border-radius: 10px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.form-control:hover,
+.form-select:hover {
+    border-color: #d0d3d9;
+}
+
+.form-range {
+    height: 8px;
+}
+
+.form-range::-webkit-slider-thumb {
+    background: #4a90e2;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(74, 144, 226, 0.3);
+}
+
+.form-range::-webkit-slider-track {
+    background: #e8eaed;
+    border-radius: 4px;
+}
+
+.form-check-input {
+    border-color: #d0d3d9;
+    border-radius: 6px;
+}
+
+.form-check-input:checked {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.form-check-label {
+    color: #2c3e50;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* 按钮 */
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #357abd 0%, #2a6396 100%);
+}
+
+.btn-outline-secondary {
+    border-color: #d0d3d9;
+    color: #2c3e50;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    border-color: #4a90e2;
+    color: #4a90e2;
+}
+
+.btn-outline-primary {
+    border-color: #4a90e2;
+    color: #4a90e2;
+}
+
+.btn-outline-primary:hover {
+    background-color: #4a90e2;
+    color: white;
+}
+
+.btn-outline-danger {
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+
+.btn-outline-danger:hover {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.btn-danger {
+    background: #ff6b6b;
+}
+
+.btn-danger:hover {
+    background: #e55a5a;
+}
+
+.btn-secondary {
+    background: #e8eaed;
+    color: #2c3e50;
+}
+
+.btn-secondary:hover {
+    background: #d0d3d9;
+}
+
+/* 输入框组 */
+.input-group {
+    border-radius: 10px;
+}
+
+.input-group-text {
+    background: #f8f9fa;
+    border: 1.5px solid #e8eaed;
+    border-right: none;
+    color: #2c3e50;
+}
+
+.input-group .form-control:first-child {
+    border-left: none;
+}
+
+.input-group .form-control:not(:first-child):not(:last-child) {
+    border-radius: 0;
+}
+
+.input-group .btn:not(:last-child) {
+    border-radius: 0;
+    border-left: none;
+    border-right: 1.5px solid #e8eaed;
+}
+
+.input-group .btn:last-child {
+    border-left: none;
+}
+
+/* 图片预览 */
+.img-thumbnail {
+    border-radius: 12px;
+    max-width: 100%;
+    height: auto;
+    border: 2px solid #e8eaed;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Loading 遮罩 */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-overlay .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* 分页 */
+.pagination {
+    margin: 0;
+}
+
+.page-link {
+    color: #4a90e2;
+    border: 1.5px solid #e8eaed;
+    margin: 0 0.3rem;
+    border-radius: 10px;
+    padding: 0.5rem 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.page-link:hover {
+    color: #357abd;
+    background-color: #f8f9fa;
+    border-color: #4a90e2;
+    transform: translateY(-1px);
+}
+
+.page-item.active .page-link {
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    color: white;
+    border-color: #4a90e2;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.page-item.disabled .page-link {
+    color: #adb5bd;
+    border-color: #e8eaed;
+}
+
+/* Toast */
+.toast {
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.toast-header {
+    background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
+    border-bottom: 1px solid #e8eaed;
+    font-weight: 600;
+}
+
+/* 徽章 */
+.badge {
+    border-radius: 6px;
+    font-weight: 600;
+    padding: 0.4em 0.7em;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .header {
+        padding: 1.5rem 0;
+    }
+
+    .header h1 {
+        font-size: 1.5rem;
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+
+    .btn-action {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .card-header h5 {
+        font-size: 1rem;
+    }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d0d3d9;
+    border-radius: 8px;
+    border: 2px solid #f8f9fa;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+/* 进度条 */
+.progress {
+    background-color: #e8eaed;
+    border-radius: 4px;
+}
+
+/* 文本颜色增强 */
+.text-muted {
+    color: #6c757d !important;
+}
+
+.text-danger {
+    color: #ff6b6b !important;
+}
+
+.text-primary {
+    color: #4a90e2 !important;
+}
+
+.text-info {
+    color: #4d96ff !important;
+}
+
+.text-success {
+    color: #6bcb77 !important;
+}
+
+/* 表格优化 */
+.table-light {
+    background-color: #f8f9fa !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f1f3f5 !important;
+}
+
+/* 输入框占位符 */
+::placeholder {
+    color: #adb5bd;
+    opacity: 1;
+}
+
+/* 关闭按钮 */
+.btn-close {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
