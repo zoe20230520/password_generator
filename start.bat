@@ -39,29 +39,33 @@ if %errorlevel% neq 0 (
 echo pip 已就绪
 echo.
 
-echo [3/4] 安装/更新依赖包...
-echo 正在安装依赖，这可能需要几分钟，请耐心等待...
-echo.
-pip install -r backend\requirements.txt -q --disable-pip-version-check
+echo [3/4] 检查依赖包...
+python -c "import flask" >nul 2>&1
 if %errorlevel% neq 0 (
+    echo 检测到依赖包未安装，正在安装...
+    echo 这可能需要几分钟，请耐心等待...
     echo.
-    echo ========================================
-    echo 错误: 依赖安装失败
-    echo ========================================
-    echo.
-    echo 可能的原因:
-    echo 1. 网络连接问题
-    echo 2. pip 版本过旧
-    echo 3. 权限不足
-    echo.
-    echo 尝试手动安装:
-    echo pip install --upgrade pip
-    echo pip install -r backend\requirements.txt
-    echo.
-    pause
-    exit /b 1
+    pip install -r backend\requirements.txt -q --disable-pip-version-check
+    if %errorlevel% neq 0 (
+        echo.
+        echo ========================================
+        echo 错误: 依赖安装失败
+        echo ========================================
+        echo.
+        echo 可能的原因:
+        echo 1. 网络连接问题
+        echo 2. pip 版本过旧
+        echo 3. 权限不足
+        echo.
+        echo 尝试手动安装:
+        echo pip install --upgrade pip
+        echo pip install -r backend\requirements.txt
+        echo.
+        pause
+        exit /b 1
+    )
+    echo 依赖安装完成
 )
-echo 依赖安装完成
 echo.
 
 echo [4/4] 启动服务...
