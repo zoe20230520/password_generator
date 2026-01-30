@@ -165,6 +165,11 @@
             backdrop-filter: blur(4px);
             color: rgba(255, 255, 255, 0.9);
         }
+
+        .alert-info {
+            background: linear-gradient(135deg, rgba(13, 202, 240, 0.2) 0%, rgba(13, 110, 253, 0.2) 100%);
+            border: 1px solid rgba(13, 202, 240, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -219,6 +224,13 @@
                         <label class="form-check-label" for="agreeTerms">
                             我已阅读并同意服务条款
                         </label>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>
+                            <strong>提示:</strong> 注册成功后，系统会自动为您创建密码备份文件并保存到 backup_files 目录。请妥善保管此文件，以便忘记密码时可以找回。
+                        </small>
                     </div>
 
                     <div class="d-grid gap-2">

@@ -5,7 +5,7 @@ echo   密码管理系统 - 快速启动
 echo ========================================
 echo.
 
-echo [1/4] 检查 Python 环境...
+echo [1/5] 检查 Python 环境...
 python --version
 if %errorlevel% neq 0 (
     echo.
@@ -29,7 +29,19 @@ for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
 echo 检测到 Python 版本: %PYTHON_VERSION%
 echo.
 
-echo [2/4] 检查 pip 包管理器...
+echo [2/5] 检查必要目录...
+if not exist "backup_files" (
+    echo 创建 backup_files 目录...
+    mkdir backup_files
+)
+if not exist "backend\uploads" (
+    echo 创建 backend\uploads 目录...
+    mkdir backend\uploads
+)
+echo 目录检查完成
+echo.
+
+echo [3/5] 检查 pip 包管理器...
 pip --version
 if %errorlevel% neq 0 (
     echo 错误: pip 未找到，请重新安装 Python
@@ -39,7 +51,7 @@ if %errorlevel% neq 0 (
 echo pip 已就绪
 echo.
 
-echo [3/4] 检查依赖包...
+echo [4/5] 检查依赖包...
 python -c "import flask" >nul 2>&1
 if %errorlevel% neq 0 (
     echo 检测到依赖包未安装，正在安装...
@@ -68,7 +80,7 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-echo [4/4] 启动服务...
+echo [5/5] 启动服务...
 echo.
 echo ========================================
 echo   服务启动中...
@@ -102,3 +114,4 @@ if %errorlevel% neq 0 (
 )
 
 pause
+

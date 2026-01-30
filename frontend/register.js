@@ -148,12 +148,14 @@ function handleRegister(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // 显示成功提示和备份信息
+            showAlert('注册成功！系统已自动为您创建密码备份文件，请妥善保管。', 'success');
             showToast('注册成功，正在跳转到登录页面...', 'success');
 
             // 延迟跳转
             setTimeout(() => {
                 window.location.href = 'login.html';
-            }, 1500);
+            }, 2000);
         } else {
             showAlert(data.error || '注册失败');
             hideLoading();

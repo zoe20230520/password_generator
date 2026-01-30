@@ -11,6 +11,10 @@ from config import Config
 from models import db, PasswordEntry, User, ClipboardItem, ClipboardUsage
 from auth import token_required, generate_token, verify_token, get_current_user_id
 
+# 获取项目根目录（backup_files所在目录）
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backup_files')
+os.makedirs(BACKUP_DIR, exist_ok=True)
+
 def create_app():
     """创建并配置Flask应用"""
     # 获取正确的前端目录路径
@@ -88,6 +92,41 @@ def register_routes(app, frontend_dir):
             db.session.add(user)
             db.session.commit()
 
+            # 生成密码备份文件
+            try:
+                backup_filename = f"password_backup_{user.username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                backup_path = os.path.join(BACKUP_DIR, backup_filename)
+
+                backup_content = f"""========================================
+    密码管理系统 - 密码备份文件
+    ========================================
+
+    用户名: {user.username}
+    邮箱: {user.email}
+    密码: {data['password']}
+    创建时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+    ========================================
+    ⚠️  安全提示
+    ========================================
+
+    1. 请妥善保管此文件，不要泄露给他人
+    2. 建议将此文件存储在安全的位置
+    3. 如果忘记密码，可以使用此文件找回
+    4. 使用后建议删除此文件或移至其他安全位置
+
+    ========================================
+    © 2026 密码管理系统
+    ========================================
+    """
+
+                with open(backup_path, 'w', encoding='utf-8') as f:
+                    f.write(backup_content)
+
+            except Exception as backup_error:
+                # 备份文件生成失败不影响注册
+                print(f"备份文件生成失败: {str(backup_error)}")
+
             return jsonify({
                 'success': True,
                 'message': '注册成功',
@@ -125,6 +164,89 @@ def register_routes(app, frontend_dir):
                     'user': user.to_dict()
                 }
             })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/auth/forgot-password', methods=['POST'])
+    def forgot_password():
+        """找回密码 - 查找备份文件"""
+        try:
+            data = request.get_json()
+            username = data.get('username')
+
+            if not username:
+                return jsonify({'success': False, 'error': '请提供用户名'}), 400
+
+            # 查找用户
+            user = User.query.filter_by(username=username).first()
+            if not user:
+                return jsonify({'success': False, 'error': '用户不存在'}), 404
+
+            # 查找备份文件
+            backup_files = []
+            try:
+                for filename in os.listdir(BACKUP_DIR):
+                    if filename.startswith(f"password_backup_{username}_") and filename.endswith('.txt'):
+                        backup_path = os.path.join(BACKUP_DIR, filename)
+                        backup_files.append({
+                            'filename': filename,
+                            'created_at': datetime.fromtimestamp(
+                                os.path.getctime(backup_path)
+                            ).strftime('%Y-%m-%d %H:%M:%S')
+                        })
+            except Exception as e:
+                print(f"读取备份目录失败: {str(e)}")
+
+            if not backup_files:
+                return jsonify({
+                    'success': False,
+                    'error': '未找到密码备份文件。如果首次注册时未成功创建备份文件，则无法找回密码。'
+                }), 404
+
+            # 返回备份文件列表（按时间倒序）
+            backup_files.sort(key=lambda x: x['created_at'], reverse=True)
+
+            return jsonify({
+                'success': True,
+                'message': '找到密码备份文件',
+                'data': {
+                    'username': username,
+                    'email': user.email,
+                    'backup_files': backup_files
+                }
+            })
+
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/auth/backup-file/<username>/<filename>', methods=['GET'])
+    def get_backup_file(username, filename):
+        """获取备份文件内容"""
+        try:
+            # 安全检查：只允许访问指定用户名的备份文件
+            if not filename.startswith(f"password_backup_{username}_") or not filename.endswith('.txt'):
+                return jsonify({'success': False, 'error': '无效的备份文件名'}), 400
+
+            backup_path = os.path.join(BACKUP_DIR, filename)
+
+            if not os.path.exists(backup_path):
+                return jsonify({'success': False, 'error': '备份文件不存在'}), 404
+
+            # 读取文件内容
+            with open(backup_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'filename': filename,
+                    'content': content,
+                    'created_at': datetime.fromtimestamp(
+                        os.path.getctime(backup_path)
+                    ).strftime('%Y-%m-%d %H:%M:%S')
+                }
+            })
+
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 

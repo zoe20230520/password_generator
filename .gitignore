@@ -58,3 +58,9 @@ Thumbs.db
 *.tmp
 *.bak
 *.backup
+
+# Password backup files (security)
+backup_files/*
+!backup_files/.gitkeep
+
+
