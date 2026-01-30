@@ -1,13 +1,13 @@
-# 密码管理系统
+# 密码管理系统 V2
 
-![Version](https://img.shields.io/badge/version-v1.0-blue)
+![Version](https://img.shields.io/badge/version-v2.0-blue)
 ![Python](https://img.shields.io/badge/python-3.7+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
-一个安全、便捷的密码管理解决方案，支持多用户、密码生成、分类管理等功能。
+一个安全、便捷的密码管理解决方案，支持多用户、密码生成、智能剪贴板、分类管理等功能。
 
 **作者**: zoecc
-**版本**: v1.0
+**版本**: v2.0
 **许可证**: MIT
 
 ## 快速开始
@@ -47,6 +47,18 @@
 - 搜索网站名称、用户名、备注
 - 分页浏览（20条/页）
 
+### 智能剪贴板
+- 安全存储常用文本内容
+- 支持密码类型标记
+- 分类和标签管理
+- 使用统计和快捷复制
+- 加密存储保护隐私
+
+### 图片备忘
+- 为密码记录添加图片备忘
+- 小图预览，点击放大查看
+- 支持多种图片格式
+
 ### 现代化界面
 - 玻璃态设计风格
 - 响应式布局
@@ -67,12 +79,15 @@ password-manager/
 │   ├── auth.py          # 认证模块
 │   ├── config.py        # 配置文件
 │   ├── models.py        # 数据模型
+│   ├── crypto_utils.py  # 加密工具
 │   ├── requirements.txt # Python 依赖
 │   └── uploads/         # 上传文件目录
 ├── frontend/            # 前端页面
 │   ├── index.html       # 主页面
 │   ├── login.html       # 登录页面
 │   ├── register.html    # 注册页面
+│   ├── clipboard.html   # 智能剪贴板页面
+│   ├── clipboard.js     # 剪贴板脚本
 │   ├── style.css        # 样式文件
 │   ├── script.js       # 主页脚本
 │   ├── login.js         # 登录脚本
@@ -80,6 +95,7 @@ password-manager/
 ├── database.db          # SQLite 数据库（自动创建）
 ├── start.bat            # 快速启动脚本
 ├── USER_GUIDE.md        # 用户使用指南
+├── CHANGELOG.md         # 更新日志
 └── README.md            # 项目说明
 ```
 
@@ -128,6 +144,13 @@ password-manager/
 
 ## 更新日志
 
+### v2.0 (2026-01-30)
+- 新增智能剪贴板功能
+- 新增图片备忘功能
+- 图片预览支持点击放大
+- 优化数据库完整性
+- 完善错误处理机制
+
 ### v1.0 (2026-01-30)
 - 完整的用户认证系统
 - 密码记录管理
@@ -139,8 +162,8 @@ password-manager/
 
 ## 项目信息
 
-**项目名称**: 密码管理系统
-**版本**: v1.0
+**项目名称**: 密码管理系统 V2
+**版本**: v2.0
 **作者**: zoecc
 **许可证**: MIT License
 
@@ -156,7 +179,8 @@ password-manager/
 ## 联系方式
 
 - **作者**: zoecc
-- **项目地址**: [GitHub 仓库链接]
+- **GitHub**: https://github.com/zoe20230520/password_generator
+- **Gitee**: https://gitee.com/zoe0520/password_generator
 
 ---
 
