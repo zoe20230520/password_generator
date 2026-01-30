@@ -614,3 +614,78 @@ body {
 .btn-close:hover {
     opacity: 1;
 }
+
+/* 批量操作栏 */
+.batch-actions {
+    border-top: 2px solid #e8eaed;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* 复选框样式优化 */
+.entry-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+#selectAll {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* 导出/导入按钮样式 */
+.btn-outline-success {
+    border-color: #6bcb77;
+    color: #6bcb77;
+}
+
+.btn-outline-success:hover {
+    background-color: #6bcb77;
+    color: white;
+}
+
+.btn-outline-info {
+    border-color: #4d96ff;
+    color: #4d96ff;
+}
+
+.btn-outline-info:hover {
+    background-color: #4d96ff;
+    color: white;
+}
+
+/* 备份模态框样式 */
+.list-group-item {
+    border: 1.5px solid #e8eaed;
+    margin-bottom: 0.5rem;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+    border-color: #4a90e2;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.list-group-item h6 {
+    margin: 0;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.list-group-item small {
+    color: #6c757d;
+}
+
+.list-group-item .fa-chevron-right {
+    transition: transform 0.2s ease;
+}
+
+.list-group-item:hover .fa-chevron-right {
+    transform: translateX(4px);
+}
+

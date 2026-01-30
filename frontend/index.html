@@ -143,15 +143,28 @@
 
                     <!-- 密码列表 -->
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <h5><i class="fas fa-list"></i> 密码列表</h5>
-                            <span class="badge bg-secondary" id="totalCount">0 条记录</span>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <button class="btn btn-sm btn-outline-success" onclick="exportPasswords()">
+                                    <i class="fas fa-download"></i> 导出
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('importFile').click()">
+                                    <i class="fas fa-upload"></i> 导入
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" onclick="showBackupModal()">
+                                    <i class="fas fa-database"></i> 备份
+                                </button>
+                                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importPasswords(event)">
+                                <span class="badge bg-secondary" id="totalCount">0 条记录</span>
+                            </div>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0" id="passwordTable">
                                     <thead class="table-light">
                                         <tr>
+                                            <th style="width: 40px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                                             <th>网站</th>
                                             <th>用户名</th>
                                             <th>分类</th>
@@ -163,6 +176,19 @@
                                         <!-- 动态加载 -->
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- 批量操作栏 -->
+                            <div class="batch-actions p-2 bg-light border-top" id="batchActions" style="display: none;">
+                                <div class="d-flex gap-2 align-items-center">
+                                    <span class="text-muted small">已选择 <strong id="selectedCount">0</strong> 条</span>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="batchDelete()">
+                                        <i class="fas fa-trash"></i> 批量删除
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
+                                        <i class="fas fa-times"></i> 取消选择
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- 分页 -->
@@ -268,6 +294,77 @@
                     <button type="button" class="btn btn-primary" id="editFromViewBtn">
                         <i class="fas fa-edit"></i> 编辑
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入确认模态框 -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">确认导入</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="importPreview"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmImportBtn">
+                        <i class="fas fa-upload"></i> 确认导入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 备份位置选择模态框 -->
+    <div class="modal fade" id="backupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-database me-2"></i>选择备份位置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>选择备份数据的保存位置。建议定期备份以保护您的数据安全。</small>
+                    </div>
+                    <div class="list-group">
+                        <button type="button" class="list-group-item list-group-item-action d-flex align-items-center" onclick="backupToDefault()">
+                            <div class="me-3">
+                                <i class="fas fa-folder-open fa-2x text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">默认下载文件夹</h6>
+                                <small class="text-muted">备份文件将保存到浏览器的默认下载位置</small>
+                            </div>
+                            <i class="fas fa-chevron-right text-muted"></i>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex align-items-center" onclick="backupToCustom()">
+                            <div class="me-3">
+                                <i class="fas fa-folder-plus fa-2x text-success"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">选择其他文件夹</h6>
+                                <small class="text-muted">自定义选择备份文件的保存位置</small>
+                            </div>
+                            <i class="fas fa-chevron-right text-muted"></i>
+                        </button>
+                    </div>
+                    <hr>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="rememberBackupLocation">
+                        <label class="form-check-label" for="rememberBackupLocation">
+                            <small>记住我的选择（下次直接使用此位置）</small>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 </div>
             </div>
         </div>

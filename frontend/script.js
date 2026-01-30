@@ -5,7 +5,13 @@ let currentEditImageFilename = null;
 let entryModal = null;
 let viewModal = null;
 let deleteModal = null;
+let importModal = null;
+let backupModal = null;
 let toast = null;
+let selectedIds = new Set();
+let pendingImportData = null;
+let pendingBackupData = null;
+let useCustomBackupPath = false;
 
 // 辅助函数
 function debounce(func, wait) {
@@ -208,7 +214,7 @@ function renderPasswordList(passwords) {
     tbody.innerHTML = '';
 
     if (passwords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">暂无数据</td></tr>';
         return;
     }
 
@@ -221,6 +227,7 @@ function renderPasswordList(passwords) {
         const strengthInfo = getStrengthInfo(item.strength || 'weak');
 
         row.innerHTML = `
+            <td><input type="checkbox" class="entry-checkbox" data-id="${item.id}" onchange="toggleSelect(${item.id})"></td>
             <td><strong>${escapeHtml(item.site_name)}</strong>${item.site_url ? `<br><small class="text-muted">${escapeHtml(item.site_url)}</small>` : ''}</td>
             <td>${escapeHtml(item.username)}</td>
             <td>${item.category ? `<span class="badge bg-light text-dark">${escapeHtml(item.category)}</span>` : '<span class="text-muted">-</span>'}</td>
@@ -687,6 +694,386 @@ function handleLogout() {
     }
 }
 
+// 批量选择功能
+function toggleSelect(id) {
+    if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+    } else {
+        selectedIds.add(id);
+    }
+    updateBatchActions();
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.entry-checkbox');
+
+    if (selectAll.checked) {
+        checkboxes.forEach(cb => {
+            selectedIds.add(parseInt(cb.dataset.id));
+            cb.checked = true;
+        });
+    } else {
+        checkboxes.forEach(cb => {
+            selectedIds.delete(parseInt(cb.dataset.id));
+            cb.checked = false;
+        });
+    }
+    updateBatchActions();
+}
+
+function updateBatchActions() {
+    const batchActions = document.getElementById('batchActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const selectAll = document.getElementById('selectAll');
+
+    selectedCount.textContent = selectedIds.size;
+
+    if (selectedIds.size > 0) {
+        batchActions.style.display = 'block';
+    } else {
+        batchActions.style.display = 'none';
+        selectAll.checked = false;
+    }
+}
+
+function clearSelection() {
+    selectedIds.clear();
+    document.querySelectorAll('.entry-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    updateBatchActions();
+}
+
+function batchDelete() {
+    if (selectedIds.size === 0) {
+        showToast('请先选择要删除的记录', 'error');
+        return;
+    }
+
+    if (!confirm(`确定要删除选中的 ${selectedIds.size} 条记录吗？此操作无法撤销。`)) {
+        return;
+    }
+
+    showLoading();
+
+    authenticatedFetch('/api/passwords/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry_ids: Array.from(selectedIds) })
+    })
+    .then(response => {
+        if (response.status === 401) {
+            handleUnauthorized();
+            throw new Error('未授权');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showToast(data.message);
+            clearSelection();
+            loadPasswords();
+            loadCategories();
+        } else {
+            showToast(data.error || '删除失败', 'error');
+        }
+    })
+    .catch(error => {
+        if (error.message !== '未授权') {
+            showToast('网络错误: ' + error.message, 'error');
+        }
+    })
+    .finally(hideLoading);
+}
+
+// 导出功能
+function exportPasswords() {
+    showLoading();
+
+    authenticatedFetch('/api/passwords/export')
+        .then(response => {
+            if (response.status === 401) {
+                handleUnauthorized();
+                throw new Error('未授权');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `passwords_export_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast(`成功导出 ${data.count} 条记录`);
+            } else {
+                showToast(data.error || '导出失败', 'error');
+            }
+        })
+        .catch(error => {
+            if (error.message !== '未授权') {
+                showToast('网络错误: ' + error.message, 'error');
+            }
+        })
+        .finally(hideLoading);
+}
+
+// 备份功能
+function showBackupModal() {
+    // 读取用户偏好设置
+    const rememberLocation = localStorage.getItem('rememberBackupLocation') === 'true';
+    const customPath = localStorage.getItem('useCustomBackupPath') === 'true';
+
+    document.getElementById('rememberBackupLocation').checked = rememberLocation;
+
+    if (rememberLocation) {
+        // 如果用户选择了记住偏好，直接使用之前的设置
+        if (customPath) {
+            backupToCustom();
+        } else {
+            backupToDefault();
+        }
+    } else {
+        // 显示模态框让用户选择
+        if (!backupModal) {
+            const backupModalEl = document.getElementById('backupModal');
+            backupModal = new bootstrap.Modal(backupModalEl);
+        }
+        backupModal.show();
+    }
+}
+
+function backupToDefault() {
+    if (backupModal) {
+        backupModal.hide();
+    }
+
+    // 保存用户偏好
+    saveBackupPreference(false);
+
+    performBackup();
+}
+
+function backupToCustom() {
+    if (backupModal) {
+        backupModal.hide();
+    }
+
+    // 保存用户偏好
+    saveBackupPreference(true);
+
+    // 检查浏览器是否支持 File System Access API
+    if ('showSaveFilePicker' in window) {
+        performBackupWithPicker();
+    } else {
+        // 不支持则使用默认方式
+        performBackup();
+        showToast('您的浏览器不支持自定义路径，已保存到默认下载位置', 'info');
+    }
+}
+
+function saveBackupPreference(useCustom) {
+    const remember = document.getElementById('rememberBackupLocation').checked;
+    localStorage.setItem('rememberBackupLocation', remember.toString());
+    if (remember) {
+        localStorage.setItem('useCustomBackupPath', useCustom.toString());
+    }
+}
+
+function performBackup() {
+    showLoading();
+
+    authenticatedFetch('/api/backup')
+        .then(response => {
+            if (response.status === 401) {
+                handleUnauthorized();
+                throw new Error('未授权');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `password_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast(`成功备份 ${data.data.count} 条记录`);
+            } else {
+                showToast(data.error || '备份失败', 'error');
+            }
+        })
+        .catch(error => {
+            if (error.message !== '未授权') {
+                showToast('网络错误: ' + error.message, 'error');
+            }
+        })
+        .finally(hideLoading);
+}
+
+async function performBackupWithPicker() {
+    showLoading();
+
+    try {
+        // 获取备份数据
+        const response = await authenticatedFetch('/api/backup');
+        if (response.status === 401) {
+            handleUnauthorized();
+            throw new Error('未授权');
+        }
+        const data = await response.json();
+
+        if (data.success) {
+            // 使用文件选择器让用户选择保存位置
+            const filename = `password_backup_${new Date().toISOString().split('T')[0]}.json`;
+            const fileHandle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [
+                    {
+                        description: 'JSON 文件',
+                        accept: {
+                            'application/json': ['.json'],
+                        },
+                    },
+                ],
+            });
+
+            // 创建文件并写入数据
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(data, null, 2));
+            await writable.close();
+
+            showToast(`成功备份 ${data.data.count} 条记录到: ${fileHandle.name}`);
+        } else {
+            showToast(data.error || '备份失败', 'error');
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') { // 用户取消选择不显示错误
+            if (error.message !== '未授权') {
+                showToast('备份失败: ' + error.message, 'error');
+            }
+        } else {
+            showToast('已取消备份', 'info');
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+// 导入功能
+function importPasswords(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            pendingImportData = data;
+
+            // 显示导入预览
+            const importPreview = document.getElementById('importPreview');
+            const entries = data.entries || data.passwords || data.data || [];
+
+            if (entries.length === 0) {
+                showToast('文件中没有找到可导入的数据', 'error');
+                return;
+            }
+
+            importPreview.innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> 导入预览</h6>
+                    <p class="mb-1">找到 ${entries.length} 条密码记录</p>
+                    <p class="mb-0 small text-muted">重复的记录（相同网站名和用户名）将被自动跳过</p>
+                </div>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>网站</th>
+                                <th>用户名</th>
+                                <th>分类</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${entries.slice(0, 10).map(item => `
+                                <tr>
+                                    <td>${escapeHtml(item.site_name || 'N/A')}</td>
+                                    <td>${escapeHtml(item.username || 'N/A')}</td>
+                                    <td>${item.category ? escapeHtml(item.category) : '<span class="text-muted">-</span>'}</td>
+                                </tr>
+                            `).join('')}
+                            ${entries.length > 10 ? `<tr><td colspan="3" class="text-center text-muted">... 还有 ${entries.length - 10} 条</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            if (!importModal) {
+                const importModalEl = document.getElementById('importModal');
+                importModal = new bootstrap.Modal(importModalEl);
+            }
+            importModal.show();
+        } catch (error) {
+            showToast('文件格式错误，请选择有效的JSON文件', 'error');
+            console.error('解析失败:', error);
+        }
+    };
+
+    reader.readAsText(file);
+        event.target.value = '';
+}
+
+function confirmImport() {
+    if (!pendingImportData) return;
+
+    showLoading();
+
+    const importData = {
+        entries: pendingImportData.entries || pendingImportData.passwords || pendingImportData.data || []
+    };
+
+    authenticatedFetch('/api/passwords/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(importData)
+    })
+    .then(response => {
+        if (response.status === 401) {
+            handleUnauthorized();
+            throw new Error('未授权');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showToast(data.message);
+            importModal.hide();
+            loadPasswords();
+            loadCategories();
+            pendingImportData = null;
+        } else {
+            showToast(data.error || '导入失败', 'error');
+        }
+    })
+    .catch(error => {
+        if (error.message !== '未授权') {
+            showToast('网络错误: ' + error.message, 'error');
+        }
+    })
+    .finally(hideLoading);
+}
+
 function setActiveNav() {
     // 设置当前页面导航高亮（如果有多个页面）
     const currentPath = window.location.pathname;
@@ -695,6 +1082,7 @@ function setActiveNav() {
 
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 重复的事件监听器已经在上面定义了，这里移除重复的 confirmImportBtn 监听器
     // 设置导航栏 active 状态
     setActiveNav();
 
@@ -708,11 +1096,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const entryModalEl = document.getElementById('entryModal');
     const viewModalEl = document.getElementById('viewModal');
     const deleteModalEl = document.getElementById('deleteModal');
+    const importModalEl = document.getElementById('importModal');
+    const backupModalEl = document.getElementById('backupModal');
     const toastEl = document.getElementById('toast');
 
     entryModal = new bootstrap.Modal(entryModalEl);
     viewModal = new bootstrap.Modal(viewModalEl);
     deleteModal = new bootstrap.Modal(deleteModalEl);
+    importModal = new bootstrap.Modal(importModalEl);
+    backupModal = new bootstrap.Modal(backupModalEl);
     toast = new bootstrap.Toast(toastEl);
 
     // 显示当前用户名
@@ -742,6 +1134,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+    document.getElementById('confirmImportBtn').addEventListener('click', confirmImport);
     document.getElementById('password').addEventListener('input', function() {
         updateStrengthIndicator(this.value);
     });

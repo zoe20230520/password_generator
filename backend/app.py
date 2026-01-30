@@ -292,6 +292,155 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
+    @app.route('/api/passwords/export', methods=['GET'])
+    @token_required
+    def export_passwords():
+        """导出所有密码记录"""
+        try:
+            user_id = get_current_user_id()
+            entries = PasswordEntry.query.filter_by(user_id=user_id).all()
+
+            export_data = [entry.to_dict() for entry in entries]
+
+            return jsonify({
+                'success': True,
+                'data': export_data,
+                'count': len(export_data),
+                'export_date': datetime.utcnow().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/passwords/import', methods=['POST'])
+    @token_required
+    def import_passwords():
+        """导入密码记录"""
+        try:
+            user_id = get_current_user_id()
+            data = request.get_json()
+            entries_data = data.get('entries', [])
+
+            if not entries_data:
+                return jsonify({'success': False, 'error': 'entries数组不能为空'}), 400
+
+            imported_count = 0
+            skipped_count = 0
+            error_messages = []
+
+            for entry_data in entries_data:
+                try:
+                    # 验证必填字段
+                    if not entry_data.get('site_name') or not entry_data.get('username') or not entry_data.get('password'):
+                        error_messages.append(f'跳过缺少必填字段的记录')
+                        skipped_count += 1
+                        continue
+
+                    # 检查是否已存在（根据网站名和用户名）
+                    existing = PasswordEntry.query.filter_by(
+                        user_id=user_id,
+                        site_name=entry_data.get('site_name'),
+                        username=entry_data.get('username')
+                    ).first()
+
+                    if existing:
+                        skipped_count += 1
+                        continue  # 跳过已存在的
+
+                    # 创建新记录
+                    entry = PasswordEntry(
+                        site_name=entry_data.get('site_name'),
+                        site_url=entry_data.get('site_url', ''),
+                        username=entry_data.get('username'),
+                        password=entry_data.get('password'),
+                        notes=entry_data.get('notes', ''),
+                        strength=entry_data.get('strength', 'weak'),
+                        category=entry_data.get('category', ''),
+                        image_filename=entry_data.get('image_filename', ''),
+                        user_id=user_id
+                    )
+                    db.session.add(entry)
+                    imported_count += 1
+                except Exception as e:
+                    error_messages.append(f'导入失败: {str(e)}')
+                    skipped_count += 1
+                    continue
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'成功导入 {imported_count} 条记录，跳过 {skipped_count} 条',
+                'imported': imported_count,
+                'skipped': skipped_count,
+                'errors': error_messages
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/passwords/batch-delete', methods=['POST'])
+    @token_required
+    def batch_delete_passwords():
+        """批量删除密码记录"""
+        try:
+            user_id = get_current_user_id()
+            data = request.get_json()
+            entry_ids = data.get('entry_ids', [])
+
+            if not entry_ids:
+                return jsonify({'success': False, 'error': 'entry_ids数组不能为空'}), 400
+
+            # 查询并删除属于当前用户的记录
+            entries = PasswordEntry.query.filter(
+                PasswordEntry.id.in_(entry_ids),
+                PasswordEntry.user_id == user_id
+            ).all()
+
+            # 删除关联的图片
+            for entry in entries:
+                if entry.image_filename:
+                    delete_image_file(entry.image_filename)
+
+            # 批量删除
+            deleted_count = PasswordEntry.query.filter(
+                PasswordEntry.id.in_(entry_ids),
+                PasswordEntry.user_id == user_id
+            ).delete(synchronize_session=False)
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'成功删除 {deleted_count} 条记录'
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/backup', methods=['GET'])
+    @token_required
+    def export_backup():
+        """导出完整备份（包含用户信息和所有密码）"""
+        try:
+            user_id = get_current_user_id()
+            user = User.query.get(user_id)
+            entries = PasswordEntry.query.filter_by(user_id=user_id).all()
+
+            backup_data = {
+                'version': '1.0',
+                'backup_date': datetime.utcnow().isoformat(),
+                'user': user.to_dict() if user else None,
+                'passwords': [entry.to_dict() for entry in entries],
+                'count': len(entries)
+            }
+
+            return jsonify({
+                'success': True,
+                'data': backup_data
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
     # ==================== 剪贴板管理 API ====================
 
     @app.route('/api/clipboard', methods=['GET'])

@@ -4,6 +4,9 @@ const API_BASE = '/api/clipboard';
 let currentPage = 1;
 let currentView = 'grid';
 let allItems = [];
+let pendingImportData = null;
+let useCustomBackupPath = false;
+let backupModal = null;
 
 // 获取token
 function getToken() {
@@ -481,36 +484,188 @@ async function exportData() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        showToast(`导出成功！共 ${response.count} 条记录`, 'success');
+        showToast(`成功导出 ${response.count} 条记录`, 'success');
     } catch (error) {
         showToast('导出失败: ' + error.message, 'danger');
     }
+}
+
+// 备份功能
+async function showBackupModal() {
+    // 读取用户偏好设置
+    const rememberLocation = localStorage.getItem('clipboardRememberBackupLocation') === 'true';
+    const customPath = localStorage.getItem('clipboardUseCustomBackupPath') === 'true';
+
+    document.getElementById('rememberBackupLocation').checked = rememberLocation;
+
+    if (rememberLocation) {
+        // 如果用户选择了记住偏好，直接使用之前的设置
+        if (customPath) {
+            await backupToCustom();
+        } else {
+            await backupToDefault();
+        }
+    } else {
+        // 显示模态框让用户选择
+        if (!backupModal) {
+            backupModal = new bootstrap.Modal(document.getElementById('backupModal'));
+        }
+        backupModal.show();
+    }
+}
+
+async function backupToDefault() {
+    if (backupModal) {
+        backupModal.hide();
+    }
+
+    // 保存用户偏好
+    saveBackupPreference(false);
+
+    try {
+        const response = await apiRequest('/api/backup');
+        const data = JSON.stringify(response.data, null, 2);
+
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `clipboard_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast(`成功备份 ${response.data.count} 条记录`, 'success');
+    } catch (error) {
+        showToast('备份失败: ' + error.message, 'danger');
+    }
+}
+
+async function backupToCustom() {
+    if (backupModal) {
+        backupModal.hide();
+    }
+
+    // 保存用户偏好
+    saveBackupPreference(true);
+
+    // 检查浏览器是否支持 File System Access API
+    if ('showSaveFilePicker' in window) {
+        try {
+            const response = await apiRequest('/api/backup');
+
+            const filename = `clipboard_backup_${new Date().toISOString().split('T')[0]}.json`;
+            const fileHandle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [
+                    {
+                        description: 'JSON 文件',
+                        accept: {
+                            'application/json': ['.json'],
+                        },
+                    },
+                ],
+            });
+
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(response.data, null, 2));
+            await writable.close();
+
+            showToast(`成功备份 ${response.data.count} 条记录`, 'success');
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                showToast('备份失败: ' + error.message, 'danger');
+            } else {
+                showToast('已取消备份', 'info');
+            }
+        }
+    } else {
+        // 不支持则使用默认方式
+        await backupToDefault();
+        showToast('您的浏览器不支持自定义路径，已保存到默认下载位置', 'info');
+    }
+}
+
+function saveBackupPreference(useCustom) {
+    const remember = document.getElementById('rememberBackupLocation').checked;
+    localStorage.setItem('clipboardRememberBackupLocation', remember.toString());
+    if (remember) {
+        localStorage.setItem('clipboardUseCustomBackupPath', useCustom.toString());
+    }
+}
+
+// 导入数据 - 处理文件选择
+function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            previewImportData(data);
+        } catch (error) {
+            showToast('文件格式错误，请选择有效的JSON文件', 'danger');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// 预览导入数据
+function previewImportData(data) {
+    pendingImportData = data;
+    const items = data.items || data.data || [];
+
+    if (items.length === 0) {
+        showToast('文件中没有找到可导入的数据', 'warning');
+        return;
+    }
+
+    document.getElementById('previewCount').textContent = items.length;
+    document.getElementById('importPreview').style.display = 'block';
 }
 
 // 导入数据
 async function importData() {
     const importDataText = document.getElementById('importData').value.trim();
 
-    if (!importDataText) {
-        showToast('请输入数据', 'warning');
+    // 优先使用文件数据，否则使用文本框数据
+    let importData;
+    if (pendingImportData) {
+        importData = pendingImportData;
+    } else if (importDataText) {
+        try {
+            importData = JSON.parse(importDataText);
+        } catch (error) {
+            showToast('数据格式错误', 'danger');
+            return;
+        }
+    } else {
+        showToast('请选择文件或输入数据', 'warning');
         return;
     }
 
     try {
-        const data = JSON.parse(importDataText);
-
-        if (!data.items || !Array.isArray(data.items)) {
+        const items = importData.items || importData.data;
+        if (!items || !Array.isArray(items)) {
             throw new Error('数据格式错误');
         }
 
         const response = await apiRequest(`${API_BASE}/import`, {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify({ items })
         });
 
         showToast(response.message || '导入成功！', 'success');
         bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+
+        // 清空输入
         document.getElementById('importData').value = '';
+        document.getElementById('importFileInput').value = '';
+        document.getElementById('importPreview').style.display = 'none';
+        pendingImportData = null;
+
         loadItems();
         loadStats();
         loadFilters();
@@ -621,9 +776,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('batchSaveBtn').addEventListener('click', batchAdd);
     document.getElementById('exportBtn').addEventListener('click', exportData);
     document.getElementById('importBtn').addEventListener('click', () => {
+        // 重置导入表单
+        document.getElementById('importData').value = '';
+        document.getElementById('importFileInput').value = '';
+        document.getElementById('importPreview').style.display = 'none';
+        pendingImportData = null;
         new bootstrap.Modal(document.getElementById('importModal')).show();
     });
+    document.getElementById('importFileInput').addEventListener('change', handleImportFile);
     document.getElementById('importSubmitBtn').addEventListener('click', importData);
+    document.getElementById('backupBtn').addEventListener('click', showBackupModal);
     document.getElementById('logoutBtn').addEventListener('click', logout);
 
     // 筛选器事件
