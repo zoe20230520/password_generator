@@ -706,6 +706,9 @@ def register_routes(app, frontend_dir):
             user_id = get_current_user_id()
             item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
 
+            # 先删除相关的使用日志，避免外键约束冲突
+            ClipboardUsage.query.filter_by(item_id=item_id).delete()
+
             # 记录删除日志
             usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='delete')
             db.session.add(usage)
