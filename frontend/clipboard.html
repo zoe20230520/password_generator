@@ -96,6 +96,116 @@
         .card-header.bg-info {
             background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%) !important;
         }
+
+        /* 查看详情模态框样式优化 */
+        #viewModal .modal-body {
+            background-color: #a6aaaa !important;
+        }
+        #viewModal .form-label {
+            color: #ffffff !important;
+        }
+        #viewModal span {
+            color: #ffffff !important;
+        }
+        #viewModal .modal-content {
+            background-color: #2c3e50 !important;
+        }
+
+        /* 添加/编辑模态框深色主题 */
+        #addModal .modal-body {
+            background-color: #2c3e50 !important;
+        }
+        #addModal .modal-content {
+            background-color: #2c3e50 !important;
+        }
+        #addModal .form-label {
+            color: #ffffff !important;
+        }
+        #addModal .form-control,
+        #addModal .form-select {
+            background-color: #34495e !important;
+            border-color: #4a6979 !important;
+            color: #ffffff !important;
+        }
+        #addModal .form-control:focus,
+        #addModal .form-select:focus {
+            background-color: #3d566e !important;
+            border-color: #5dade2 !important;
+            color: #ffffff !important;
+        }
+        #addModal .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 批量添加模态框深色主题 */
+        #batchModal .modal-body {
+            background-color: #2c3e50 !important;
+        }
+        #batchModal .modal-content {
+            background-color: #2c3e50 !important;
+        }
+        #batchModal .form-label {
+            color: #ffffff !important;
+        }
+        #batchModal .form-control {
+            background-color: #34495e !important;
+            border-color: #4a6979 !important;
+            color: #ffffff !important;
+        }
+        #batchModal .form-control:focus {
+            background-color: #3d566e !important;
+            border-color: #5dade2 !important;
+            color: #ffffff !important;
+        }
+        #batchModal .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 导入模态框深色主题 */
+        #importModal .modal-body {
+            background-color: #2c3e50 !important;
+        }
+        #importModal .modal-content {
+            background-color: #2c3e50 !important;
+        }
+        #importModal .form-label {
+            color: #ffffff !important;
+        }
+        #importModal .form-control {
+            background-color: #34495e !important;
+            border-color: #4a6979 !important;
+            color: #ffffff !important;
+        }
+        #importModal .form-control:focus {
+            background-color: #3d566e !important;
+            border-color: #5dade2 !important;
+            color: #ffffff !important;
+        }
+
+        /* 备份位置选择模态框深色主题 */
+        #backupModal .modal-body {
+            background-color: #2c3e50 !important;
+        }
+        #backupModal .modal-content {
+            background-color: #2c3e50 !important;
+        }
+        #backupModal .list-group-item {
+            background-color: #34495e !important;
+            border-color: #4a6979 !important;
+            color: #ffffff !important;
+        }
+        #backupModal .list-group-item:hover {
+            background-color: #3d566e !important;
+        }
+        #backupModal h6 {
+            color: #ffffff !important;
+        }
+        #backupModal small {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        #backupModal .form-check-label {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
     </style>
 </head>
 <body>
@@ -370,14 +480,14 @@
     <div class="modal fade" id="viewModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="viewModalTitle"><i class="fas fa-eye me-2"></i>查看详情</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title" id="viewModalTitle" style="color: #3197db;"><i class="fas fa-eye me-2"></i>查看详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold">内容：</label>
-                        <div class="p-3 bg-light rounded" id="viewContent"></div>
+                        <div class="p-3 rounded" id="viewContent" style="background-color: #cfd0d1; color: #ffffff;"></div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">

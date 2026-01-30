@@ -220,7 +220,8 @@ body {
 .modal-header {
     border-bottom: 1px solid #e8eaed;
     padding: 1.5rem 2rem;
-    background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
+    background-image: linear-gradient(to top, #4288D4 0%);
+    
 }
 
 .modal-body {
