@@ -1018,7 +1018,6 @@ def register_routes(app, frontend_dir):
             return jsonify({'success': False, 'error': str(e)}), 500
 
     @app.route('/api/uploads/<filename>')
-    @token_required
     def get_uploaded_file(filename):
         """获取上传的图片"""
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

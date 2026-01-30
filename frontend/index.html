@@ -255,7 +255,7 @@
                             <div class="col-12" id="imagePreviewContainer" style="display: none;">
                                 <label class="form-label">当前图片</label>
                                 <div class="position-relative d-inline-block">
-                                    <img id="imagePreview" src="" alt="预览" class="img-thumbnail" style="max-width: 200px;">
+                                    <img id="imagePreview" src="" alt="预览" class="img-thumbnail" style="max-width: 150px; max-height: 150px; object-fit: cover; cursor: pointer;" onclick="openImageModal(this.src)">
                                     <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" onclick="removeImage()">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -407,6 +407,21 @@
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- 图片放大模态框 -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">图片预览</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body d-flex justify-content-center align-items-center">
+                    <img id="modalImage" src="" alt="放大预览" class="img-fluid">
+                </div>
+            </div>
         </div>
     </div>
 

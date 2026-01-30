@@ -645,6 +645,16 @@ function showImagePreview(url) {
 
     preview.src = url;
     container.style.display = 'block';
+    
+    // 确保图片加载完成
+    preview.onload = function() {
+        container.style.display = 'block';
+    };
+    
+    preview.onerror = function() {
+        showToast('图片加载失败', 'error');
+        container.style.display = 'none';
+    };
 }
 
 function hideImagePreview() {
@@ -686,6 +696,15 @@ function removeImage() {
         hideImagePreview();
         document.getElementById('imageUpload').value = '';
     }
+}
+
+// 打开图片放大模态框
+function openImageModal(imageSrc) {
+    const modalImage = document.getElementById('modalImage');
+    modalImage.src = imageSrc;
+    
+    const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    imageModal.show();
 }
 
 function handleLogout() {
