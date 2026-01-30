@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能剪贴板 - 密码管理系统</title>
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <link href="font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .clipboard-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #0d6efd;
+        }
+        .clipboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .clipboard-card.password {
+            border-left-color: #dc3545;
+        }
+        .content-preview {
+            max-height: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        .tag-badge {
+            font-size: 0.75rem;
+            margin: 2px;
+        }
+        .stats-card {
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-icon {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-clipboard-list me-2"></i>密码管理系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html"><i class="fas fa-key me-1"></i>密码管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="clipboard.html"><i class="fas fa-clipboard me-1"></i>智能剪贴板</a>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link" id="currentUser"></span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-1"></i>退出</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 统计卡片 -->
+        <div class="row mb-4" id="statsSection">
+            <div class="col-md-3 mb-3">
+                <div class="card stats-card">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon text-primary me-3">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0" id="totalItems">0</h5>
+                            <p class="card-text text-muted mb-0">总项目数</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stats-card">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon text-danger me-3">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0" id="passwordItems">0</h5>
+                            <p class="card-text text-muted mb-0">密码类型</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stats-card">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon text-success me-3">
+                            <i class="fas fa-font"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0" id="textItems">0</h5>
+                            <p class="card-text text-muted mb-0">文本类型</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stats-card">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon text-warning me-3">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0" id="topItem">--</h5>
+                            <p class="card-text text-muted mb-0">最常用</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-md-3">
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-plus me-2"></i>添加新项目
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#addModal">
+                            <i class="fas fa-plus me-2"></i>添加剪贴板
+                        </button>
+                        <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#batchModal">
+                            <i class="fas fa-layer-group me-2"></i>批量添加
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-filter me-2"></i>筛选
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">搜索</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索标题或标签...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">分类</label>
+                            <select class="form-select" id="categoryFilter">
+                                <option value="">全部分类</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">类型</label>
+                            <select class="form-select" id="typeFilter">
+                                <option value="">全部类型</option>
+                                <option value="true">密码类型</option>
+                                <option value="false">文本类型</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">标签</label>
+                            <select class="form-select" id="tagFilter">
+                                <option value="">全部标签</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary w-100" id="resetFilters">
+                            <i class="fas fa-redo me-2"></i>重置筛选
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-download me-2"></i>数据管理
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-outline-primary w-100 mb-2" id="exportBtn">
+                            <i class="fas fa-download me-2"></i>导出数据
+                        </button>
+                        <button class="btn btn-outline-success w-100" id="importBtn">
+                            <i class="fas fa-upload me-2"></i>导入数据
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-md-9">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4><i class="fas fa-clipboard-list me-2"></i>剪贴板项目</h4>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-th me-1"></i>视图切换
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" data-view="grid"><i class="fas fa-th-large me-2"></i>网格视图</a></li>
+                            <li><a class="dropdown-item" href="#" data-view="list"><i class="fas fa-list me-2"></i>列表视图</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="clipboardContainer" class="row">
+                    <!-- 剪贴板项目将在这里动态加载 -->
+                </div>
+
+                <!-- 分页 -->
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination" id="pagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑模态框 -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalTitle"><i class="fas fa-plus me-2"></i>添加剪贴板</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="clipboardForm">
+                        <input type="hidden" id="itemId">
+                        <div class="mb-3">
+                            <label class="form-label">标题</label>
+                            <input type="text" class="form-control" id="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">内容</label>
+                            <textarea class="form-control" id="content" rows="5" required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">分类</label>
+                                <input type="text" class="form-control" id="category" placeholder="例如：工作、个人">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">类型</label>
+                                <select class="form-select" id="isPassword">
+                                    <option value="false">文本类型</option>
+                                    <option value="true">密码类型</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">标签（用逗号分隔）</label>
+                            <input type="text" class="form-control" id="tags" placeholder="例如：重要, 待处理">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量添加模态框 -->
+    <div class="modal fade" id="batchModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-layer-group me-2"></i>批量添加</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">JSON数据</label>
+                        <textarea class="form-control font-monospace" id="batchData" rows="10" placeholder='[{"title": "标题1", "content": "内容1", "category": "分类", "tags": "标签1,标签2"}]'></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>每条记录必须包含 title 和 content 字段
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" id="batchSaveBtn">批量添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查看详情模态框 -->
+    <div class="modal fade" id="viewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="viewModalTitle"><i class="fas fa-eye me-2"></i>查看详情</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">内容：</label>
+                        <div class="p-3 bg-light rounded" id="viewContent"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">分类：</label>
+                            <span id="viewCategory"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">类型：</label>
+                            <span id="viewType"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">标签：</label>
+                        <div id="viewTags"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">使用次数：</label>
+                            <span id="viewUseCount"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">创建时间：</label>
+                            <span id="viewCreatedAt"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">最后使用：</label>
+                            <span id="viewLastUsed"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="copyFromViewBtn">
+                        <i class="fas fa-copy me-2"></i>复制内容
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入模态框 -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-upload me-2"></i>导入数据</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">粘贴导出的JSON数据</label>
+                        <textarea class="form-control font-monospace" id="importData" rows="10"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" id="importSubmitBtn">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="bootstrap.bundle.min.js"></script>
+    <script src="clipboard.js"></script>
+</body>
+</html>

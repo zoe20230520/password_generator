@@ -8,12 +8,19 @@ from PIL import Image
 import io
 
 from config import Config
-from models import db, PasswordEntry, User
+from models import db, PasswordEntry, User, ClipboardItem, ClipboardUsage
 from auth import token_required, generate_token, verify_token, get_current_user_id
 
 def create_app():
     """创建并配置Flask应用"""
-    app = Flask(__name__, static_folder='../frontend', static_url_path='')
+    # 获取正确的前端目录路径
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    frontend_dir = os.path.join(backend_dir, '..', 'frontend')
+    frontend_dir = os.path.abspath(frontend_dir)
+
+    # 创建 Flask 应用,完全禁用静态文件处理
+    app = Flask(__name__, static_folder=None)
+
     app.config.from_object(Config)
 
     # 启用CORS
@@ -30,17 +37,22 @@ def create_app():
         db.create_all()
 
     # 注册路由
-    register_routes(app)
+    register_routes(app, frontend_dir)
 
     return app
 
-def register_routes(app):
+def register_routes(app, frontend_dir):
     """注册所有路由"""
 
     # 主页路由
     @app.route('/')
     def index():
-        return send_from_directory(app.static_folder, 'index.html')
+        return send_from_directory(frontend_dir, 'index.html')
+
+    # 处理所有前端页面和静态文件（包括 .html, .css, .js, .png, .jpg, .ico 等）
+    @app.route('/<path:filename>')
+    def serve_static(filename):
+        return send_from_directory(frontend_dir, filename)
 
     # ==================== 认证 API ====================
 
@@ -280,7 +292,397 @@ def register_routes(app):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
+    # ==================== 剪贴板管理 API ====================
+
+    @app.route('/api/clipboard', methods=['GET'])
+    @token_required
+    def get_clipboard_items():
+        """获取剪贴板内容列表"""
+        try:
+            user_id = get_current_user_id()
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 20, type=int)
+            search = request.args.get('search', '')
+            category = request.args.get('category', '')
+            tag = request.args.get('tag', '')
+            is_password = request.args.get('is_password', type=bool)
+
+            # 只查询当前用户的剪贴板
+            query = ClipboardItem.query.filter_by(user_id=user_id)
+
+            # 搜索过滤
+            if search:
+                search_term = f'%{search}%'
+                query = query.filter(
+                    (ClipboardItem.title.ilike(search_term)) |
+                    (ClipboardItem.tags.ilike(search_term))
+                )
+
+            # 分类过滤
+            if category:
+                query = query.filter(ClipboardItem.category == category)
+
+            # 标签过滤
+            if tag:
+                query = query.filter(ClipboardItem.tags.like(f'%{tag}%'))
+
+            # 密码类型过滤
+            if is_password is not None:
+                query = query.filter(ClipboardItem.is_password == is_password)
+
+            # 分页
+            pagination = query.order_by(ClipboardItem.updated_at.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+
+            return jsonify({
+                'success': True,
+                'data': [item.to_dict(decrypt=False) for item in pagination.items],
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'current_page': page
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/<int:item_id>', methods=['GET'])
+    @token_required
+    def get_clipboard_item(item_id):
+        """获取单个剪贴板内容详情"""
+        try:
+            user_id = get_current_user_id()
+            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+
+            # 记录查看日志
+            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='view')
+            db.session.add(usage)
+
+            return jsonify({'success': True, 'data': item.to_dict(decrypt=True)})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard', methods=['POST'])
+    @token_required
+    def create_clipboard_item():
+        """创建剪贴板内容"""
+        try:
+            user_id = get_current_user_id()
+            data = request.get_json()
+
+            # 验证必填字段
+            if not data.get('content'):
+                return jsonify({'success': False, 'error': '内容为必填字段'}), 400
+
+            # 创建记录
+            item = ClipboardItem(
+                title=data.get('title', '未命名剪贴板'),
+                category=data.get('category', ''),
+                tags=data.get('tags', ''),
+                is_password=data.get('is_password', False),
+                use_count=0,
+                user_id=user_id
+            )
+            item.set_content(data['content'])
+
+            db.session.add(item)
+            db.session.commit()
+
+            return jsonify({'success': True, 'data': item.to_dict(decrypt=False)}), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/<int:item_id>', methods=['PUT'])
+    @token_required
+    def update_clipboard_item(item_id):
+        """更新剪贴板内容"""
+        try:
+            user_id = get_current_user_id()
+            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+            data = request.get_json()
+
+            # 更新字段
+            if 'title' in data:
+                item.title = data['title']
+            if 'category' in data:
+                item.category = data['category']
+            if 'tags' in data:
+                item.tags = data['tags']
+            if 'is_password' in data:
+                item.is_password = data['is_password']
+            if 'content' in data:
+                item.set_content(data['content'])
+
+            item.updated_at = datetime.utcnow()
+            db.session.commit()
+
+            # 记录编辑日志
+            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='edit')
+            db.session.add(usage)
+            db.session.commit()
+
+            return jsonify({'success': True, 'data': item.to_dict(decrypt=False)})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/<int:item_id>', methods=['DELETE'])
+    @token_required
+    def delete_clipboard_item(item_id):
+        """删除剪贴板内容"""
+        try:
+            user_id = get_current_user_id()
+            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+
+            # 记录删除日志
+            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='delete')
+            db.session.add(usage)
+
+            db.session.delete(item)
+            db.session.commit()
+
+            return jsonify({'success': True, 'message': '删除成功'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/<int:item_id>/copy', methods=['POST'])
+    @token_required
+    def copy_clipboard_item(item_id):
+        """复制剪贴板内容"""
+        try:
+            user_id = get_current_user_id()
+            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+
+            # 增加使用计数
+            item.use_count = (item.use_count or 0) + 1
+            item.last_used = datetime.utcnow()
+
+            # 记录复制日志
+            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='copy')
+            db.session.add(usage)
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'content': item.get_content(),
+                    'use_count': item.use_count
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/batch', methods=['POST'])
+    @token_required
+    def batch_create_clipboard():
+        """批量创建剪贴板内容"""
+        try:
+            user_id = get_current_user_id()
+            data = request.get_json()
+            items_data = data.get('items', [])
+
+            if not items_data:
+                return jsonify({'success': False, 'error': 'items数组不能为空'}), 400
+
+            created_items = []
+            for item_data in items_data:
+                if not item_data.get('content'):
+                    continue
+
+                item = ClipboardItem(
+                    title=item_data.get('title', '未命名剪贴板'),
+                    category=item_data.get('category', ''),
+                    tags=item_data.get('tags', ''),
+                    is_password=item_data.get('is_password', False),
+                    user_id=user_id
+                )
+                item.set_content(item_data['content'])
+                db.session.add(item)
+                created_items.append(item)
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'成功创建 {len(created_items)} 条记录',
+                'data': [item.to_dict(decrypt=False) for item in created_items]
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/batch/delete', methods=['POST'])
+    @token_required
+    def batch_delete_clipboard():
+        """批量删除剪贴板内容"""
+        try:
+            user_id = get_current_user_id()
+            data = request.get_json()
+            item_ids = data.get('item_ids', [])
+
+            if not item_ids:
+                return jsonify({'success': False, 'error': 'item_ids数组不能为空'}), 400
+
+            # 删除属于当前用户的记录
+            deleted_count = ClipboardItem.query.filter(
+                ClipboardItem.id.in_(item_ids),
+                ClipboardItem.user_id == user_id
+            ).delete(synchronize_session=False)
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'成功删除 {deleted_count} 条记录'
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/categories', methods=['GET'])
+    @token_required
+    def get_clipboard_categories():
+        """获取剪贴板所有分类"""
+        try:
+            user_id = get_current_user_id()
+            categories = db.session.query(ClipboardItem.category).filter(
+                ClipboardItem.user_id == user_id,
+                ClipboardItem.category != '',
+                ClipboardItem.category.isnot(None)
+            ).distinct().all()
+
+            return jsonify({
+                'success': True,
+                'data': [cat[0] for cat in categories if cat[0]]
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/tags', methods=['GET'])
+    @token_required
+    def get_clipboard_tags():
+        """获取剪贴板所有标签"""
+        try:
+            user_id = get_current_user_id()
+            items = ClipboardItem.query.filter_by(user_id=user_id).all()
+
+            # 提取并合并所有标签
+            all_tags = set()
+            for item in items:
+                if item.tags:
+                    tags = [tag.strip() for tag in item.tags.split(',')]
+                    all_tags.update(tags)
+
+            return jsonify({
+                'success': True,
+                'data': sorted(list(all_tags))
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/export', methods=['GET'])
+    @token_required
+    def export_clipboard():
+        """导出剪贴板数据"""
+        try:
+            user_id = get_current_user_id()
+            items = ClipboardItem.query.filter_by(user_id=user_id).all()
+
+            export_data = [item.to_dict(decrypt=True) for item in items]
+
+            return jsonify({
+                'success': True,
+                'data': export_data,
+                'count': len(export_data)
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/import', methods=['POST'])
+    @token_required
+    def import_clipboard():
+        """导入剪贴板数据"""
+        try:
+            user_id = get_current_user_id()
+            data = request.get_json()
+            items_data = data.get('items', [])
+
+            if not items_data:
+                return jsonify({'success': False, 'error': 'items数组不能为空'}), 400
+
+            imported_count = 0
+            for item_data in items_data:
+                if not item_data.get('content'):
+                    continue
+
+                # 检查是否已存在（根据标题和内容）
+                existing = ClipboardItem.query.filter_by(
+                    user_id=user_id,
+                    title=item_data.get('title', '')
+                ).first()
+
+                if existing:
+                    continue  # 跳过已存在的
+
+                item = ClipboardItem(
+                    title=item_data.get('title', '未命名剪贴板'),
+                    category=item_data.get('category', ''),
+                    tags=item_data.get('tags', ''),
+                    is_password=item_data.get('is_password', False),
+                    user_id=user_id
+                )
+                item.set_content(item_data['content'])
+                db.session.add(item)
+                imported_count += 1
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'成功导入 {imported_count} 条记录'
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/clipboard/stats', methods=['GET'])
+    @token_required
+    def get_clipboard_stats():
+        """获取剪贴板统计信息"""
+        try:
+            user_id = get_current_user_id()
+
+            total_items = ClipboardItem.query.filter_by(user_id=user_id).count()
+            password_items = ClipboardItem.query.filter_by(user_id=user_id, is_password=True).count()
+
+            # 获取最近使用次数最多的项目
+            top_items = ClipboardItem.query.filter_by(user_id=user_id).order_by(
+                ClipboardItem.use_count.desc()
+            ).limit(5).all()
+
+            # 最近添加的项目
+            recent_items = ClipboardItem.query.filter_by(user_id=user_id).order_by(
+                ClipboardItem.created_at.desc()
+            ).limit(5).all()
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'total_items': total_items,
+                    'password_items': password_items,
+                    'text_items': total_items - password_items,
+                    'top_items': [item.to_dict(decrypt=False) for item in top_items],
+                    'recent_items': [item.to_dict(decrypt=False) for item in recent_items]
+                }
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
     # ==================== 辅助功能API ====================
+
 
     @app.route('/api/generate-password', methods=['POST'])
     @token_required

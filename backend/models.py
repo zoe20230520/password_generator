@@ -4,6 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
+# 导入加密管理器（延后导入避免循环依赖）
+crypto = None
+
 class User(db.Model):
     """用户模型"""
     __tablename__ = 'users'
@@ -78,4 +81,88 @@ class PasswordEntry(db.Model):
 
     def __repr__(self):
         return f'<PasswordEntry {self.site_name} - {self.username}>'
+
+class ClipboardItem(db.Model):
+    """剪贴板内容模型"""
+    __tablename__ = 'clipboard_items'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(100), nullable=False, default='未命名剪贴板')
+    content = db.Column(db.Text, nullable=False)  # 加密存储
+    category = db.Column(db.String(50))
+    tags = db.Column(db.String(200))
+    is_password = db.Column(db.Boolean, default=False)
+    use_count = db.Column(db.Integer, default=0)
+    last_used = db.Column(db.DateTime)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    user = db.relationship('User', backref=db.backref('clipboard_items', lazy=True))
+
+    def set_content(self, content):
+        """设置内容（加密）"""
+        from crypto_utils import crypto
+        if crypto:
+            self.content = crypto.encrypt(content) if content else ''
+        else:
+            self.content = content
+
+    def get_content(self):
+        """获取内容（解密）"""
+        from crypto_utils import crypto
+        if crypto and self.content:
+            try:
+                return crypto.decrypt(self.content)
+            except:
+                return self.content
+        return self.content if self.content else ''
+
+    def to_dict(self, decrypt=True):
+        """将模型转换为字典"""
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'content': self.get_content() if decrypt else '***',
+            'category': self.category,
+            'tags': self.tags,
+            'is_password': self.is_password,
+            'use_count': self.use_count,
+            'last_used': self.last_used.isoformat() if self.last_used else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+        return data
+
+    def __repr__(self):
+        return f'<ClipboardItem {self.title}>'
+
+class ClipboardUsage(db.Model):
+    """剪贴板使用统计模型"""
+    __tablename__ = 'clipboard_usage'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('clipboard_items.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    action = db.Column(db.String(20))  # copy, view, edit, delete
+
+    # 关系
+    user = db.relationship('User', backref=db.backref('clipboard_usage', lazy=True))
+    item = db.relationship('ClipboardItem', backref=db.backref('usage_logs', lazy=True))
+
+    def to_dict(self):
+        """将模型转换为字典"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'timestamp': self.timestamp.isoformat(),
+            'action': self.action
+        }
+
+    def __repr__(self):
+        return f'<ClipboardUsage {self.action} at {self.timestamp}>'
+
 

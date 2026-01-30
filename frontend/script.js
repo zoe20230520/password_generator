@@ -124,7 +124,40 @@ function copyPassword() {
         showToast('请先生成密码', 'error');
         return;
     }
-    navigator.clipboard.writeText(password).then(() => showToast('密码已复制到剪贴板'));
+
+    // 尝试使用现代Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(password).then(() => {
+            showToast('密码已复制到剪贴板');
+        }).catch(err => {
+            // 失败时使用备用方法
+            fallbackCopyText(password);
+        });
+    } else {
+        // 浏览器不支持Clipboard API，使用备用方法
+        fallbackCopyText(password);
+    }
+}
+
+function fallbackCopyText(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        document.execCommand('copy');
+        showToast('密码已复制到剪贴板');
+    } catch (err) {
+        showToast('复制失败，请手动复制', 'error');
+        console.error('复制失败:', err);
+    }
+
+    document.body.removeChild(textArea);
 }
 
 function updateStrengthIndicator(password) {
@@ -654,8 +687,17 @@ function handleLogout() {
     }
 }
 
+function setActiveNav() {
+    // 设置当前页面导航高亮（如果有多个页面）
+    const currentPath = window.location.pathname;
+    // 此函数可用于未来的多页面导航高亮
+}
+
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 设置导航栏 active 状态
+    setActiveNav();
+
     // 检查登录状态
     if (!isLoggedIn()) {
         window.location.href = 'login.html';
