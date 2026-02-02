@@ -1,14 +1,20 @@
 import os
 import random
 import string
+import sys
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from PIL import Image
 import io
 
+# 添加 backend 目录到 Python 路径
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from config import Config
-from models import db, PasswordEntry, User, ClipboardItem, ClipboardUsage
+from models import db, PasswordEntry, User, FavoriteItem, FavoriteUsage
 from auth import token_required, generate_token, verify_token, get_current_user_id
 
 # 获取项目根目录（backup_files所在目录）
@@ -563,12 +569,12 @@ def register_routes(app, frontend_dir):
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    # ==================== 剪贴板管理 API ====================
+    # ==================== 收藏网站管理 API ====================
 
-    @app.route('/api/clipboard', methods=['GET'])
+    @app.route('/api/favorites', methods=['GET'])
     @token_required
     def get_clipboard_items():
-        """获取剪贴板内容列表"""
+        """获取收藏网站列表"""
         try:
             user_id = get_current_user_id()
             page = request.args.get('page', 1, type=int)
@@ -577,32 +583,37 @@ def register_routes(app, frontend_dir):
             category = request.args.get('category', '')
             tag = request.args.get('tag', '')
             is_password = request.args.get('is_password', type=bool)
+            item_type = request.args.get('item_type', '')
 
-            # 只查询当前用户的剪贴板
-            query = ClipboardItem.query.filter_by(user_id=user_id)
+            # 只查询当前用户的收藏
+            query = FavoriteItem.query.filter_by(user_id=user_id)
 
             # 搜索过滤
             if search:
                 search_term = f'%{search}%'
                 query = query.filter(
-                    (ClipboardItem.title.ilike(search_term)) |
-                    (ClipboardItem.tags.ilike(search_term))
+                    (FavoriteItem.title.ilike(search_term)) |
+                    (FavoriteItem.tags.ilike(search_term))
                 )
 
             # 分类过滤
             if category:
-                query = query.filter(ClipboardItem.category == category)
+                query = query.filter(FavoriteItem.category == category)
 
             # 标签过滤
             if tag:
-                query = query.filter(ClipboardItem.tags.like(f'%{tag}%'))
+                query = query.filter(FavoriteItem.tags.like(f'%{tag}%'))
 
             # 密码类型过滤
             if is_password is not None:
-                query = query.filter(ClipboardItem.is_password == is_password)
+                query = query.filter(FavoriteItem.is_password == is_password)
+
+            # 收藏类型过滤
+            if item_type:
+                query = query.filter(FavoriteItem.item_type == item_type)
 
             # 分页
-            pagination = query.order_by(ClipboardItem.updated_at.desc()).paginate(
+            pagination = query.order_by(FavoriteItem.updated_at.desc()).paginate(
                 page=page, per_page=per_page, error_out=False
             )
 
@@ -616,16 +627,16 @@ def register_routes(app, frontend_dir):
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/<int:item_id>', methods=['GET'])
+    @app.route('/api/favorites/<int:item_id>', methods=['GET'])
     @token_required
     def get_clipboard_item(item_id):
-        """获取单个剪贴板内容详情"""
+        """获取单个收藏详情"""
         try:
             user_id = get_current_user_id()
-            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+            item = FavoriteItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
 
             # 记录查看日志
-            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='view')
+            usage = FavoriteUsage(user_id=user_id, item_id=item_id, action='view')
             db.session.add(usage)
 
             return jsonify({'success': True, 'data': item.to_dict(decrypt=True)})
@@ -633,10 +644,10 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard', methods=['POST'])
+    @app.route('/api/favorites', methods=['POST'])
     @token_required
     def create_clipboard_item():
-        """创建剪贴板内容"""
+        """创建收藏"""
         try:
             user_id = get_current_user_id()
             data = request.get_json()
@@ -646,11 +657,14 @@ def register_routes(app, frontend_dir):
                 return jsonify({'success': False, 'error': '内容为必填字段'}), 400
 
             # 创建记录
-            item = ClipboardItem(
-                title=data.get('title', '未命名剪贴板'),
+            item = FavoriteItem(
+                title=data.get('title', '未命名收藏'),
                 category=data.get('category', ''),
                 tags=data.get('tags', ''),
                 is_password=data.get('is_password', False),
+                item_type=data.get('item_type', 'link'),
+                url=data.get('url', ''),
+                image_url=data.get('image_url', ''),
                 use_count=0,
                 user_id=user_id
             )
@@ -664,13 +678,13 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/<int:item_id>', methods=['PUT'])
+    @app.route('/api/favorites/<int:item_id>', methods=['PUT'])
     @token_required
     def update_clipboard_item(item_id):
-        """更新剪贴板内容"""
+        """更新收藏"""
         try:
             user_id = get_current_user_id()
-            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+            item = FavoriteItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
             data = request.get_json()
 
             # 更新字段
@@ -682,6 +696,12 @@ def register_routes(app, frontend_dir):
                 item.tags = data['tags']
             if 'is_password' in data:
                 item.is_password = data['is_password']
+            if 'item_type' in data:
+                item.item_type = data['item_type']
+            if 'url' in data:
+                item.url = data['url']
+            if 'image_url' in data:
+                item.image_url = data['image_url']
             if 'content' in data:
                 item.set_content(data['content'])
 
@@ -689,7 +709,7 @@ def register_routes(app, frontend_dir):
             db.session.commit()
 
             # 记录编辑日志
-            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='edit')
+            usage = FavoriteUsage(user_id=user_id, item_id=item_id, action='edit')
             db.session.add(usage)
             db.session.commit()
 
@@ -698,19 +718,19 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/<int:item_id>', methods=['DELETE'])
+    @app.route('/api/favorites/<int:item_id>', methods=['DELETE'])
     @token_required
     def delete_clipboard_item(item_id):
-        """删除剪贴板内容"""
+        """删除收藏"""
         try:
             user_id = get_current_user_id()
-            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+            item = FavoriteItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
 
             # 先删除相关的使用日志，避免外键约束冲突
-            ClipboardUsage.query.filter_by(item_id=item_id).delete()
+            FavoriteUsage.query.filter_by(item_id=item_id).delete()
 
             # 记录删除日志
-            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='delete')
+            usage = FavoriteUsage(user_id=user_id, item_id=item_id, action='delete')
             db.session.add(usage)
 
             db.session.delete(item)
@@ -721,20 +741,20 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/<int:item_id>/copy', methods=['POST'])
+    @app.route('/api/favorites/<int:item_id>/copy', methods=['POST'])
     @token_required
     def copy_clipboard_item(item_id):
-        """复制剪贴板内容"""
+        """复制收藏内容"""
         try:
             user_id = get_current_user_id()
-            item = ClipboardItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
+            item = FavoriteItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
 
             # 增加使用计数
             item.use_count = (item.use_count or 0) + 1
             item.last_used = datetime.utcnow()
 
             # 记录复制日志
-            usage = ClipboardUsage(user_id=user_id, item_id=item_id, action='copy')
+            usage = FavoriteUsage(user_id=user_id, item_id=item_id, action='copy')
             db.session.add(usage)
             db.session.commit()
 
@@ -749,10 +769,10 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/batch', methods=['POST'])
+    @app.route('/api/favorites/batch', methods=['POST'])
     @token_required
     def batch_create_clipboard():
-        """批量创建剪贴板内容"""
+        """批量创建收藏"""
         try:
             user_id = get_current_user_id()
             data = request.get_json()
@@ -766,8 +786,8 @@ def register_routes(app, frontend_dir):
                 if not item_data.get('content'):
                     continue
 
-                item = ClipboardItem(
-                    title=item_data.get('title', '未命名剪贴板'),
+                item = FavoriteItem(
+                    title=item_data.get('title', '未命名收藏'),
                     category=item_data.get('category', ''),
                     tags=item_data.get('tags', ''),
                     is_password=item_data.get('is_password', False),
@@ -788,10 +808,10 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/batch/delete', methods=['POST'])
+    @app.route('/api/favorites/batch/delete', methods=['POST'])
     @token_required
     def batch_delete_clipboard():
-        """批量删除剪贴板内容"""
+        """批量删除收藏"""
         try:
             user_id = get_current_user_id()
             data = request.get_json()
@@ -801,9 +821,9 @@ def register_routes(app, frontend_dir):
                 return jsonify({'success': False, 'error': 'item_ids数组不能为空'}), 400
 
             # 删除属于当前用户的记录
-            deleted_count = ClipboardItem.query.filter(
-                ClipboardItem.id.in_(item_ids),
-                ClipboardItem.user_id == user_id
+            deleted_count = FavoriteItem.query.filter(
+                FavoriteItem.id.in_(item_ids),
+                FavoriteItem.user_id == user_id
             ).delete(synchronize_session=False)
 
             db.session.commit()
@@ -816,16 +836,16 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/categories', methods=['GET'])
+    @app.route('/api/favorites/categories', methods=['GET'])
     @token_required
     def get_clipboard_categories():
-        """获取剪贴板所有分类"""
+        """获取收藏所有分类"""
         try:
             user_id = get_current_user_id()
-            categories = db.session.query(ClipboardItem.category).filter(
-                ClipboardItem.user_id == user_id,
-                ClipboardItem.category != '',
-                ClipboardItem.category.isnot(None)
+            categories = db.session.query(FavoriteItem.category).filter(
+                FavoriteItem.user_id == user_id,
+                FavoriteItem.category != '',
+                FavoriteItem.category.isnot(None)
             ).distinct().all()
 
             return jsonify({
@@ -835,13 +855,13 @@ def register_routes(app, frontend_dir):
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/tags', methods=['GET'])
+    @app.route('/api/favorites/tags', methods=['GET'])
     @token_required
     def get_clipboard_tags():
-        """获取剪贴板所有标签"""
+        """获取收藏所有标签"""
         try:
             user_id = get_current_user_id()
-            items = ClipboardItem.query.filter_by(user_id=user_id).all()
+            items = FavoriteItem.query.filter_by(user_id=user_id).all()
 
             # 提取并合并所有标签
             all_tags = set()
@@ -857,13 +877,13 @@ def register_routes(app, frontend_dir):
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/export', methods=['GET'])
+    @app.route('/api/favorites/export', methods=['GET'])
     @token_required
     def export_clipboard():
-        """导出剪贴板数据"""
+        """导出收藏数据"""
         try:
             user_id = get_current_user_id()
-            items = ClipboardItem.query.filter_by(user_id=user_id).all()
+            items = FavoriteItem.query.filter_by(user_id=user_id).all()
 
             export_data = [item.to_dict(decrypt=True) for item in items]
 
@@ -875,10 +895,10 @@ def register_routes(app, frontend_dir):
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/import', methods=['POST'])
+    @app.route('/api/favorites/import', methods=['POST'])
     @token_required
     def import_clipboard():
-        """导入剪贴板数据"""
+        """导入收藏数据"""
         try:
             user_id = get_current_user_id()
             data = request.get_json()
@@ -893,7 +913,7 @@ def register_routes(app, frontend_dir):
                     continue
 
                 # 检查是否已存在（根据标题和内容）
-                existing = ClipboardItem.query.filter_by(
+                existing = FavoriteItem.query.filter_by(
                     user_id=user_id,
                     title=item_data.get('title', '')
                 ).first()
@@ -901,8 +921,8 @@ def register_routes(app, frontend_dir):
                 if existing:
                     continue  # 跳过已存在的
 
-                item = ClipboardItem(
-                    title=item_data.get('title', '未命名剪贴板'),
+                item = FavoriteItem(
+                    title=item_data.get('title', '未命名收藏'),
                     category=item_data.get('category', ''),
                     tags=item_data.get('tags', ''),
                     is_password=item_data.get('is_password', False),
@@ -922,32 +942,37 @@ def register_routes(app, frontend_dir):
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/api/clipboard/stats', methods=['GET'])
+    @app.route('/api/favorites/stats', methods=['GET'])
     @token_required
     def get_clipboard_stats():
-        """获取剪贴板统计信息"""
+        """获取收藏统计信息"""
         try:
             user_id = get_current_user_id()
 
-            total_items = ClipboardItem.query.filter_by(user_id=user_id).count()
-            password_items = ClipboardItem.query.filter_by(user_id=user_id, is_password=True).count()
+            total_items = FavoriteItem.query.filter_by(user_id=user_id).count()
+            link_items = FavoriteItem.query.filter_by(user_id=user_id, item_type='link').count()
+            image_items = FavoriteItem.query.filter_by(user_id=user_id, item_type='image').count()
+            article_items = FavoriteItem.query.filter_by(user_id=user_id, item_type='article').count()
 
             # 获取最近使用次数最多的项目
-            top_items = ClipboardItem.query.filter_by(user_id=user_id).order_by(
-                ClipboardItem.use_count.desc()
+            top_items = FavoriteItem.query.filter_by(user_id=user_id).order_by(
+                FavoriteItem.use_count.desc()
             ).limit(5).all()
 
             # 最近添加的项目
-            recent_items = ClipboardItem.query.filter_by(user_id=user_id).order_by(
-                ClipboardItem.created_at.desc()
+            recent_items = FavoriteItem.query.filter_by(user_id=user_id).order_by(
+                FavoriteItem.created_at.desc()
             ).limit(5).all()
 
             return jsonify({
                 'success': True,
                 'data': {
                     'total_items': total_items,
-                    'password_items': password_items,
-                    'text_items': total_items - password_items,
+                    'link_items': link_items,
+                    'image_items': image_items,
+                    'article_items': article_items,
+                    'password_items': 0,  # 向后兼容
+                    'text_items': total_items,  # 向后兼容
                     'top_items': [item.to_dict(decrypt=False) for item in top_items],
                     'recent_items': [item.to_dict(decrypt=False) for item in recent_items]
                 }
@@ -957,6 +982,35 @@ def register_routes(app, frontend_dir):
 
     # ==================== 辅助功能API ====================
 
+    @app.route('/api/favorites/fetch-url', methods=['POST'])
+    @token_required
+    def fetch_url_info():
+        """获取URL信息（标题、描述、图片）"""
+        try:
+            data = request.get_json()
+            url = data.get('url', '').strip()
+            
+            if not url:
+                return jsonify({'success': False, 'error': 'URL不能为空'}), 400
+            
+            # 验证URL格式
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            
+            # 这里使用简单的模拟数据，实际项目中可以使用requests和BeautifulSoup来抓取网页信息
+            # 由于CORS限制，这里返回模拟数据
+            result = {
+                'title': '网页标题',
+                'description': '网页描述信息',
+                'image': ''
+            }
+            
+            return jsonify({
+                'success': True,
+                'data': result
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
 
     @app.route('/api/generate-password', methods=['POST'])
     @token_required
@@ -1140,5 +1194,21 @@ def delete_image_file(filename):
 
 # 运行应用
 if __name__ == '__main__':
+    import webbrowser
+    import threading
+    import time
+
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+
+    # 延迟1秒后自动打开浏览器(确保服务器已启动)
+    def open_browser():
+        time.sleep(1.5)
+        webbrowser.open('http://localhost:5000')
+
+    # 在新线程中打开浏览器
+    browser_thread = threading.Thread(target=open_browser)
+    browser_thread.daemon = True
+    browser_thread.start()
+
+    # 运行Flask应用
+    app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)

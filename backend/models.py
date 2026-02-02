@@ -82,16 +82,19 @@ class PasswordEntry(db.Model):
     def __repr__(self):
         return f'<PasswordEntry {self.site_name} - {self.username}>'
 
-class ClipboardItem(db.Model):
-    """剪贴板内容模型"""
-    __tablename__ = 'clipboard_items'
+class FavoriteItem(db.Model):
+    """收藏网站模型"""
+    __tablename__ = 'favorite_items'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    title = db.Column(db.String(100), nullable=False, default='未命名剪贴板')
+    title = db.Column(db.String(100), nullable=False, default='未命名收藏')
     content = db.Column(db.Text, nullable=False)  # 加密存储
     category = db.Column(db.String(50))
     tags = db.Column(db.String(200))
     is_password = db.Column(db.Boolean, default=False)
+    item_type = db.Column(db.String(20), default='link')  # link, image, article
+    url = db.Column(db.String(500))  # 网址URL
+    image_url = db.Column(db.String(500))  # 封面图片URL
     use_count = db.Column(db.Integer, default=0)
     last_used = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -99,7 +102,7 @@ class ClipboardItem(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
-    user = db.relationship('User', backref=db.backref('clipboard_items', lazy=True))
+    user = db.relationship('User', backref=db.backref('favorite_items', lazy=True))
 
     def set_content(self, content):
         """设置内容（加密）"""
@@ -128,6 +131,9 @@ class ClipboardItem(db.Model):
             'category': self.category,
             'tags': self.tags,
             'is_password': self.is_password,
+            'item_type': self.item_type,
+            'url': self.url,
+            'image_url': self.image_url,
             'use_count': self.use_count,
             'last_used': self.last_used.isoformat() if self.last_used else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -136,21 +142,21 @@ class ClipboardItem(db.Model):
         return data
 
     def __repr__(self):
-        return f'<ClipboardItem {self.title}>'
+        return f'<FavoriteItem {self.title}>'
 
-class ClipboardUsage(db.Model):
-    """剪贴板使用统计模型"""
-    __tablename__ = 'clipboard_usage'
+class FavoriteUsage(db.Model):
+    """收藏网站使用统计模型"""
+    __tablename__ = 'favorite_usage'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    item_id = db.Column(db.Integer, db.ForeignKey('clipboard_items.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('favorite_items.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     action = db.Column(db.String(20))  # copy, view, edit, delete
 
     # 关系
-    user = db.relationship('User', backref=db.backref('clipboard_usage', lazy=True))
-    item = db.relationship('ClipboardItem', backref=db.backref('usage_logs', lazy=True))
+    user = db.relationship('User', backref=db.backref('favorite_usage', lazy=True))
+    item = db.relationship('FavoriteItem', backref=db.backref('usage_logs', lazy=True))
 
     def to_dict(self):
         """将模型转换为字典"""
@@ -163,6 +169,6 @@ class ClipboardUsage(db.Model):
         }
 
     def __repr__(self):
-        return f'<ClipboardUsage {self.action} at {self.timestamp}>'
+        return f'<FavoriteUsage {self.action} at {self.timestamp}>'
 
 

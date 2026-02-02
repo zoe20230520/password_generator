@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能剪贴板 - 密码管理系统</title>
+    <title>收藏网站 - 密码管理系统</title>
     <link href="bootstrap.min.css" rel="stylesheet">
     <link href="font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -223,7 +223,7 @@
                         <a class="nav-link" href="index.html"><i class="fas fa-key me-1"></i>密码管理</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="clipboard.html"><i class="fas fa-clipboard me-1"></i>智能剪贴板</a>
+                        <a class="nav-link active" href="favorites.html"><i class="fas fa-star me-1"></i>收藏网站</a>
                     </li>
                     <li class="nav-item">
                         <span class="nav-link" id="currentUser"></span>
@@ -237,17 +237,44 @@
     </nav>
 
     <div class="container-fluid mt-4">
+        <!-- 分类导航 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="nav nav-pills nav-fill" id="categoryNav">
+                            <button class="nav-link active" data-category="all" onclick="filterByCategory('all')">
+                                <i class="fas fa-layer-group me-2"></i>所有收藏
+                            </button>
+                            <button class="nav-link" data-category="link" onclick="filterByCategory('link')">
+                                <i class="fas fa-link me-2"></i>链接
+                            </button>
+                            <button class="nav-link" data-category="image" onclick="filterByCategory('image')">
+                                <i class="fas fa-image me-2"></i>图片
+                            </button>
+                            <button class="nav-link" data-category="article" onclick="filterByCategory('article')">
+                                <i class="fas fa-file-alt me-2"></i>文章
+                            </button>
+                            <button class="nav-link" data-category="settings" onclick="showSettings()">
+                                <i class="fas fa-cog me-2"></i>设置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 统计卡片 -->
         <div class="row mb-4" id="statsSection">
             <div class="col-md-3 mb-3">
                 <div class="card stats-card">
                     <div class="card-body d-flex align-items-center">
                         <div class="stat-icon text-primary me-3">
-                            <i class="fas fa-clipboard-list"></i>
+                            <i class="fas fa-star"></i>
                         </div>
                         <div>
                             <h5 class="card-title mb-0" id="totalItems">0</h5>
-                            <p class="card-text text-muted mb-0">总项目数</p>
+                            <p class="card-text text-muted mb-0">总收藏数</p>
                         </div>
                     </div>
                 </div>
@@ -255,12 +282,12 @@
             <div class="col-md-3 mb-3">
                 <div class="card stats-card">
                     <div class="card-body d-flex align-items-center">
-                        <div class="stat-icon text-danger me-3">
-                            <i class="fas fa-key"></i>
+                        <div class="stat-icon text-info me-3">
+                            <i class="fas fa-link"></i>
                         </div>
                         <div>
-                            <h5 class="card-title mb-0" id="passwordItems">0</h5>
-                            <p class="card-text text-muted mb-0">密码类型</p>
+                            <h5 class="card-title mb-0" id="linkItems">0</h5>
+                            <p class="card-text text-muted mb-0">链接收藏</p>
                         </div>
                     </div>
                 </div>
@@ -269,11 +296,11 @@
                 <div class="card stats-card">
                     <div class="card-body d-flex align-items-center">
                         <div class="stat-icon text-success me-3">
-                            <i class="fas fa-font"></i>
+                            <i class="fas fa-image"></i>
                         </div>
                         <div>
-                            <h5 class="card-title mb-0" id="textItems">0</h5>
-                            <p class="card-text text-muted mb-0">文本类型</p>
+                            <h5 class="card-title mb-0" id="imageItems">0</h5>
+                            <p class="card-text text-muted mb-0">图片收藏</p>
                         </div>
                     </div>
                 </div>
@@ -282,11 +309,11 @@
                 <div class="card stats-card">
                     <div class="card-body d-flex align-items-center">
                         <div class="stat-icon text-warning me-3">
-                            <i class="fas fa-fire"></i>
+                            <i class="fas fa-file-alt"></i>
                         </div>
                         <div>
-                            <h5 class="card-title mb-0" id="topItem">--</h5>
-                            <p class="card-text text-muted mb-0">最常用</p>
+                            <h5 class="card-title mb-0" id="articleItems">0</h5>
+                            <p class="card-text text-muted mb-0">文章收藏</p>
                         </div>
                     </div>
                 </div>
@@ -302,7 +329,7 @@
                     </div>
                     <div class="card-body">
                         <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#addModal">
-                            <i class="fas fa-plus me-2"></i>添加剪贴板
+                            <i class="fas fa-plus me-2"></i>添加收藏
                         </button>
                         <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#batchModal">
                             <i class="fas fa-layer-group me-2"></i>批量添加
@@ -378,7 +405,7 @@
             <!-- 主内容区 -->
             <div class="col-md-9">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4><i class="fas fa-clipboard-list me-2"></i>剪贴板项目</h4>
+                    <h4><i class="fas fa-star me-2"></i>收藏项目</h4>
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="fas fa-th me-1"></i>视图切换
@@ -390,8 +417,8 @@
                     </div>
                 </div>
 
-                <div id="clipboardContainer" class="row">
-                    <!-- 剪贴板项目将在这里动态加载 -->
+                <div id="favoritesContainer" class="row">
+                    <!-- 收藏项目将在这里动态加载 -->
                 </div>
 
                 <!-- 分页 -->
@@ -410,18 +437,45 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modalTitle"><i class="fas fa-plus me-2"></i>添加剪贴板</h5>
+                    <h5 class="modal-title" id="modalTitle"><i class="fas fa-plus me-2"></i>添加收藏</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>添加新的网页链接、图片或文章到收藏夹
+                    </div>
                     <form id="clipboardForm">
                         <input type="hidden" id="itemId">
+                        <div class="mb-3">
+                            <label class="form-label">收藏类型</label>
+                            <select class="form-select" id="itemType" onchange="handleItemTypeChange()">
+                                <option value="link">链接</option>
+                                <option value="image">图片</option>
+                                <option value="article">文章</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="urlField">
+                            <label class="form-label">网址 <small class="text-muted">（自动识别标题和描述）</small></label>
+                            <div class="input-group">
+                                <input type="url" class="form-control" id="url" placeholder="https://example.com">
+                                <button class="btn btn-outline-primary" type="button" onclick="fetchUrlInfo()">
+                                    <i class="fas fa-magic"></i> 自动识别
+                                </button>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">标题</label>
                             <input type="text" class="form-control" id="title" required>
                         </div>
+                        <div class="mb-3" id="imageField" style="display: none;">
+                            <label class="form-label">封面图片 URL</label>
+                            <input type="url" class="form-control" id="imageUrl" placeholder="https://example.com/image.jpg">
+                            <div class="mt-2">
+                                <img id="imagePreview" src="" alt="预览" style="max-width: 200px; max-height: 200px; display: none;">
+                            </div>
+                        </div>
                         <div class="mb-3">
-                            <label class="form-label">内容</label>
+                            <label class="form-label">描述</label>
                             <textarea class="form-control" id="content" rows="5" required></textarea>
                         </div>
                         <div class="row">
@@ -430,22 +484,15 @@
                                 <input type="text" class="form-control" id="category" placeholder="例如：工作、个人">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">类型</label>
-                                <select class="form-select" id="isPassword">
-                                    <option value="false">文本类型</option>
-                                    <option value="true">密码类型</option>
-                                </select>
+                                <label class="form-label">标签（用逗号分隔）</label>
+                                <input type="text" class="form-control" id="tags" placeholder="例如：重要, 待处理">
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">标签（用逗号分隔）</label>
-                            <input type="text" class="form-control" id="tags" placeholder="例如：重要, 待处理">
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="saveBtn">保存</button>
+                    <button type="button" class="btn btn-primary" id="saveBtn">添加</button>
                 </div>
             </div>
         </div>
@@ -481,7 +528,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-info">
-                    <h5 class="modal-title" id="viewModalTitle" style="color: #3197db;"><i class="fas fa-eye me-2"></i>查看详情</h5>
+                    <h5 class="modal-title" id="viewModalTitle" style="color: #ffffff;"><i class="fas fa-eye me-2"></i>查看详情</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -616,6 +663,6 @@
     </div>
 
     <script src="bootstrap.bundle.min.js"></script>
-    <script src="clipboard.js"></script>
+    <script src="favorites.js"></script>
 </body>
 </html>

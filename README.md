@@ -1,13 +1,13 @@
 # 密码管理系统 V2
 
-![Version](https://img.shields.io/badge/version-v2.0-blue)
+![Version](https://img.shields.io/badge/version-v2.0.2-blue)
 ![Python](https://img.shields.io/badge/python-3.7+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
-一个安全、便捷的密码管理解决方案，支持多用户、密码生成、智能剪贴板、分类管理等功能。
+一个安全、便捷的密码管理解决方案，支持多用户、密码生成、收藏网站、分类管理等功能。
 
 **作者**: zoecc
-**版本**: v2.0
+**版本**: v2.0.2
 **许可证**: MIT
 
 ## 快速开始
@@ -47,11 +47,14 @@
 - 搜索网站名称、用户名、备注
 - 分页浏览（20条/页）
 
-### 智能剪贴板
-- 安全存储常用文本内容
-- 支持密码类型标记
+### 收藏网站
+- 安全收藏网站链接、图片和文章
+- 智能分类管理（链接、图片、文章）
+- URL自动识别功能（提取标题和描述）
+- 封面图片预览
 - 分类和标签管理
 - 使用统计和快捷复制
+- 时间标注（显示相对时间）
 - 加密存储保护隐私
 
 ### 图片备忘
@@ -86,8 +89,8 @@ password-manager/
 │   ├── index.html       # 主页面
 │   ├── login.html       # 登录页面
 │   ├── register.html    # 注册页面
-│   ├── clipboard.html   # 智能剪贴板页面
-│   ├── clipboard.js     # 剪贴板脚本
+│   ├── favorites.html   # 收藏网站页面
+│   ├── favorites.js     # 收藏网站脚本
 │   ├── style.css        # 样式文件
 │   ├── script.js       # 主页脚本
 │   ├── login.js         # 登录脚本
@@ -145,7 +148,7 @@ password-manager/
 ## 更新日志
 
 ### v2.0 (2026-01-30)
-- 新增智能剪贴板功能
+- 新增收藏网站功能
 - 新增图片备忘功能
 - 图片预览支持点击放大
 - 优化数据库完整性

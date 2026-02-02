@@ -13,13 +13,14 @@ class Config:
     # 基础配置
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-change-this-in-production'
 
-    # 数据库配置
-    BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    # 数据库配置 - 使用当前工作目录确保持久化
+    # 打包后工作目录是 EXE 所在目录，开发环境是项目根目录
+    BASE_DIR = os.path.abspath(os.getcwd())
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(BASE_DIR, "database.db")}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # 文件上传配置
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'backend', 'uploads')
+    # 文件上传配置 - 使用当前工作目录
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 

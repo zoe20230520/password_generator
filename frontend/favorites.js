@@ -1,8 +1,9 @@
-// 智能剪贴板 JavaScript
+// 收藏网站 JavaScript
 
-const API_BASE = '/api/clipboard';
+const API_BASE = '/api/favorites';
 let currentPage = 1;
 let currentView = 'grid';
+let currentCategory = 'all';
 let allItems = [];
 let pendingImportData = null;
 let useCustomBackupPath = false;
@@ -70,13 +71,12 @@ async function loadItems() {
     try {
         const search = document.getElementById('searchInput').value;
         const category = document.getElementById('categoryFilter').value;
-        const type = document.getElementById('typeFilter').value;
         const tag = document.getElementById('tagFilter').value;
 
         let url = `${API_BASE}?page=${currentPage}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (category) url += `&category=${encodeURIComponent(category)}`;
-        if (type) url += `&is_password=${type}`;
+        if (currentCategory !== 'all') url += `&item_type=${currentCategory}`;
         if (tag) url += `&tag=${encodeURIComponent(tag)}`;
 
         const response = await apiRequest(url);
@@ -92,14 +92,14 @@ async function loadItems() {
 
 // 渲染项目列表
 function renderItems(items) {
-    const container = document.getElementById('clipboardContainer');
+    const container = document.getElementById('favoritesContainer');
 
     if (items.length === 0) {
         container.innerHTML = `
             <div class="col-12 text-center py-5">
-                <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
-                <h4 class="text-muted">暂无剪贴板项目</h4>
-                <p class="text-muted">点击"添加剪贴板"按钮开始使用</p>
+                <i class="fas fa-star fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">暂无收藏项目</h4>
+                <p class="text-muted">点击"添加收藏"按钮开始使用</p>
             </div>
         `;
         return;
@@ -112,18 +112,83 @@ function renderItems(items) {
     }
 }
 
+// 获取收藏类型图标
+function getItemTypeIcon(itemType) {
+    switch (itemType) {
+        case 'link':
+            return '<i class="fas fa-link text-info"></i>';
+        case 'image':
+            return '<i class="fas fa-image text-success"></i>';
+        case 'article':
+            return '<i class="fas fa-file-alt text-warning"></i>';
+        default:
+            return '<i class="fas fa-star text-primary"></i>';
+    }
+}
+
+// 获取收藏类型名称
+function getItemTypeName(itemType) {
+    switch (itemType) {
+        case 'link':
+            return '链接';
+        case 'image':
+            return '图片';
+        case 'article':
+            return '文章';
+        default:
+            return '未知';
+    }
+}
+
+// 获取收藏类型徽章颜色
+function getItemTypeBadgeColor(itemType) {
+    switch (itemType) {
+        case 'link':
+            return 'bg-info';
+        case 'image':
+            return 'bg-success';
+        case 'article':
+            return 'bg-warning';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+// 格式化相对时间
+function formatRelativeTime(dateString) {
+    if (!dateString) return '未知时间';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+    const diffWeek = Math.floor(diffDay / 7);
+    const diffMonth = Math.floor(diffDay / 30);
+    const diffYear = Math.floor(diffDay / 365);
+    
+    if (diffSec < 60) return '刚刚';
+    if (diffMin < 60) return `大约${diffMin}分钟前`;
+    if (diffHour < 24) return `大约${diffHour}小时前`;
+    if (diffDay < 7) return `大约${diffDay}天前`;
+    if (diffWeek < 4) return `大约${diffWeek}周前`;
+    if (diffMonth < 12) return `大约${diffMonth}个月前`;
+    return `大约${diffYear}年前`;
+}
 // 渲染网格视图
 function renderGridView(items) {
-    const container = document.getElementById('clipboardContainer');
+    const container = document.getElementById('favoritesContainer');
     container.className = 'row';
 
     container.innerHTML = items.map(item => `
         <div class="col-md-6 col-lg-4 mb-3">
-            <div class="card clipboard-card ${item.is_password ? 'password' : ''}">
+            <div class="card favorites-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h5 class="card-title mb-0 text-truncate">${escapeHtml(item.title)}</h5>
-                        ${item.is_password ? '<i class="fas fa-key text-danger"></i>' : '<i class="fas fa-font text-success"></i>'}
+                        ${getItemTypeIcon(item.item_type || 'link')}
                     </div>
                     <p class="card-text content-preview text-muted small">${escapeHtml(item.content)}</p>
                     <div class="mb-2">
@@ -132,6 +197,7 @@ function renderGridView(items) {
                     </div>
                     <small class="text-muted">
                         <i class="fas fa-copy me-1"></i>${item.use_count || 0} 次使用
+                        <span class="ms-2"><i class="fas fa-clock me-1"></i>${formatRelativeTime(item.created_at)}</span>
                     </small>
                 </div>
                 <div class="card-footer bg-transparent">
@@ -157,7 +223,7 @@ function renderGridView(items) {
 
 // 渲染列表视图
 function renderListView(items) {
-    const container = document.getElementById('clipboardContainer');
+    const container = document.getElementById('favoritesContainer');
     container.className = '';
 
     container.innerHTML = `
@@ -170,6 +236,7 @@ function renderListView(items) {
                         <th>类型</th>
                         <th>标签</th>
                         <th>使用次数</th>
+                        <th>添加时间</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -178,12 +245,12 @@ function renderListView(items) {
                         <tr>
                             <td>
                                 <strong>${escapeHtml(item.title)}</strong>
-                                ${item.is_password ? '<i class="fas fa-key text-danger ms-2"></i>' : ''}
+                                ${getItemTypeIcon(item.item_type || 'link')}
                             </td>
                             <td>${escapeHtml(item.category || '-')}</td>
                             <td>
-                                <span class="badge ${item.is_password ? 'bg-danger' : 'bg-success'}">
-                                    ${item.is_password ? '密码' : '文本'}
+                                <span class="badge ${getItemTypeBadgeColor(item.item_type || 'link')}">
+                                    ${getItemTypeName(item.item_type || 'link')}
                                 </span>
                             </td>
                             <td>
@@ -192,6 +259,7 @@ function renderListView(items) {
                                 ).join('') : '-'}
                             </td>
                             <td>${item.use_count || 0}</td>
+                            <td>${formatRelativeTime(item.created_at)}</td>
                             <td>
                                 <div class="btn-group" role="group">
                                     <button class="btn btn-sm btn-outline-primary" onclick="viewItem(${item.id})" title="查看">
@@ -273,9 +341,7 @@ async function viewItem(id) {
         document.getElementById('viewModalTitle').innerHTML = `<i class="fas fa-eye me-2"></i>查看详情 - ${escapeHtml(item.title)}`;
         document.getElementById('viewContent').textContent = item.content;
         document.getElementById('viewCategory').textContent = item.category || '-';
-        document.getElementById('viewType').innerHTML = item.is_password ?
-            '<span class="badge bg-danger">密码类型</span>' :
-            '<span class="badge bg-success">文本类型</span>';
+        document.getElementById('viewType').innerHTML = `<span class="badge ${getItemTypeBadgeColor(item.item_type || 'link')}">${getItemTypeName(item.item_type || 'link')}</span>`;
         document.getElementById('viewTags').innerHTML = item.tags ?
             item.tags.split(',').map(tag => `<span class="badge bg-secondary me-1">${escapeHtml(tag.trim())}</span>`).join('') :
             '<span class="text-muted">无标签</span>';
@@ -315,13 +381,23 @@ async function editItem(id) {
         const response = await apiRequest(`${API_BASE}/${id}`);
         const item = response.data;
 
-        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>编辑剪贴板';
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>编辑收藏';
         document.getElementById('itemId').value = id;
         document.getElementById('title').value = item.title;
         document.getElementById('content').value = item.content;
         document.getElementById('category').value = item.category || '';
-        document.getElementById('isPassword').value = item.is_password.toString();
+        document.getElementById('itemType').value = item.item_type || 'link';
         document.getElementById('tags').value = item.tags || '';
+        document.getElementById('url').value = item.url || '';
+        document.getElementById('imageUrl').value = item.image_url || '';
+        
+        handleItemTypeChange();
+        
+        if (item.image_url) {
+            const imagePreview = document.getElementById('imagePreview');
+            imagePreview.src = item.image_url;
+            imagePreview.style.display = 'block';
+        }
 
         new bootstrap.Modal(document.getElementById('addModal')).show();
     } catch (error) {
@@ -349,11 +425,13 @@ async function saveItem() {
     const title = document.getElementById('title').value.trim();
     const content = document.getElementById('content').value.trim();
     const category = document.getElementById('category').value.trim();
-    const isPassword = document.getElementById('isPassword').value === 'true';
+    const itemType = document.getElementById('itemType').value;
     const tags = document.getElementById('tags').value.trim();
+    const url = document.getElementById('url').value.trim();
+    const imageUrl = document.getElementById('imageUrl').value.trim();
 
     if (!title || !content) {
-        showToast('标题和内容不能为空', 'warning');
+        showToast('标题和描述不能为空', 'warning');
         return;
     }
 
@@ -362,8 +440,11 @@ async function saveItem() {
             title,
             content,
             category,
-            is_password: isPassword,
-            tags
+            is_password: false,
+            item_type: itemType,
+            tags,
+            url,
+            image_url: imageUrl
         };
 
         if (id) {
@@ -377,12 +458,14 @@ async function saveItem() {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
-            showToast('创建成功！', 'success');
+            showToast('添加成功！', 'success');
         }
 
         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
         document.getElementById('clipboardForm').reset();
         document.getElementById('itemId').value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        handleItemTypeChange();
         loadItems();
         loadStats();
     } catch (error) {
@@ -428,8 +511,9 @@ async function loadStats() {
         const stats = response.data;
 
         document.getElementById('totalItems').textContent = stats.total_items;
-        document.getElementById('passwordItems').textContent = stats.password_items;
-        document.getElementById('textItems').textContent = stats.text_items;
+        document.getElementById('linkItems').textContent = stats.link_items;
+        document.getElementById('imageItems').textContent = stats.image_items;
+        document.getElementById('articleItems').textContent = stats.article_items;
 
         // 最常用项目
         const topItem = stats.top_items[0];
@@ -438,6 +522,112 @@ async function loadStats() {
         console.error('加载统计失败:', error);
     }
 }
+
+// 按分类过滤收藏
+function filterByCategory(category) {
+    currentCategory = category;
+    currentPage = 1;
+    
+    // 更新导航按钮状态
+    document.querySelectorAll('#categoryNav button').forEach(btn => {
+        if (btn.dataset.category === category) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 加载项目
+    loadItems();
+}
+
+// 显示设置页面
+function showSettings() {
+    alert('设置功能即将推出');
+}
+
+// 处理收藏类型变化
+function handleItemTypeChange() {
+    const itemType = document.getElementById('itemType').value;
+    const urlField = document.getElementById('urlField');
+    const imageField = document.getElementById('imageField');
+    
+    if (itemType === 'link') {
+        urlField.style.display = 'block';
+        imageField.style.display = 'none';
+    } else if (itemType === 'image') {
+        urlField.style.display = 'none';
+        imageField.style.display = 'block';
+    } else if (itemType === 'article') {
+        urlField.style.display = 'block';
+        imageField.style.display = 'none';
+    }
+}
+
+// URL自动识别功能
+async function fetchUrlInfo() {
+    const url = document.getElementById('url').value.trim();
+    
+    if (!url) {
+        showToast('请输入网址', 'warning');
+        return;
+    }
+    
+    try {
+        showToast('正在识别...', 'info');
+        
+        const response = await fetch(`/api/favorites/fetch-url`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({ url })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.data.title) {
+                document.getElementById('title').value = result.data.title;
+            }
+            if (result.data.description) {
+                document.getElementById('content').value = result.data.description;
+            }
+            if (result.data.image) {
+                document.getElementById('imageUrl').value = result.data.image;
+                document.getElementById('imagePreview').src = result.data.image;
+                document.getElementById('imagePreview').style.display = 'block';
+            }
+            showToast('识别成功！', 'success');
+        } else {
+            showToast('识别失败: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showToast('识别失败: ' + error.message, 'danger');
+    }
+}
+
+// 图片URL预览
+document.addEventListener('DOMContentLoaded', function() {
+    const imageUrlInput = document.getElementById('imageUrl');
+    const imagePreview = document.getElementById('imagePreview');
+    
+    if (imageUrlInput) {
+        imageUrlInput.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url) {
+                imagePreview.src = url;
+                imagePreview.style.display = 'block';
+                imagePreview.onerror = function() {
+                    this.style.display = 'none';
+                };
+            } else {
+                imagePreview.style.display = 'none';
+            }
+        });
+    }
+});
 
 // 加载分类和标签
 async function loadFilters() {
@@ -816,6 +1006,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('addModal').addEventListener('hidden.bs.modal', function() {
         document.getElementById('clipboardForm').reset();
         document.getElementById('itemId').value = '';
-        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus me-2"></i>添加剪贴板';
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus me-2"></i>添加收藏';
     });
 });
